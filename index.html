@@ -308,7 +308,7 @@
         alert('同じ名前が既に登録されています'); return;
       }
       const note = document.getElementById('participantNote').value.trim();
-      const votes = { _note: note };
+      const votes = { _note: note, _joinedAt: Date.now() };
       data.dates.forEach((_, i) => votes[i] = 'o');
       await updateDoc(eventRef, { [`participants.${name}`]: votes });
       document.getElementById('participantName').value = '';
@@ -331,9 +331,12 @@
     const maxCount = Math.max(...counts);
     const weeks = ['日','月','火','水','木','金','土'];
 
-    // 参加者名ヘッダー（備考なし）
+    // 回答順にソート
+    entries.sort((a, b) => (a[1]._joinedAt || 0) - (b[1]._joinedAt || 0));
+
+    // 参加者名ヘッダー（削除ボタン付き）
     const nameHeaders = entries.map(([name]) =>
-      `<th style="min-width:80px">${name}</th>`
+      `<th style="min-width:80px">${name}<br><button class="del-btn" data-name="${name}" style="font-size:0.7rem;background:none;border:1px solid #c0392b;color:#c0392b;border-radius:3px;cursor:pointer;padding:1px 6px;margin-top:4px;font-weight:normal;">削除</button></th>`
     ).join('');
 
     // 日付ごとの行
@@ -366,6 +369,19 @@
           <tr class="count-row"><td style="color:#555;font-size:0.85rem;">備考</td>${noteCells}<td></td></tr>
         </tbody>
       </table>`;
+
+    // 削除ボタンのイベント
+    wrap.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name;
+        if (!confirm(`「${name}」の回答を削除しますか？`)) return;
+        const snap = await getDoc(doc(db, 'events', eventId));
+        const data = snap.data();
+        const newParticipants = { ...data.participants };
+        delete newParticipants[name];
+        await updateDoc(doc(db, 'events', eventId), { participants: newParticipants });
+      });
+    });
 
     // 備考欄の編集イベント
     wrap.querySelectorAll('.note-input').forEach(input => {
