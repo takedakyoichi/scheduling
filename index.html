@@ -330,35 +330,32 @@
     const maxCount = Math.max(...counts);
     const weeks = ['日','月','火','水','木','金','土'];
 
-    const headers = dates.map(d => {
-      const dt = new Date(d + 'T00:00:00');
-      return `<th>${dt.getMonth()+1}/${dt.getDate()}(${weeks[dt.getDay()]})</th>`;
+    // 参加者名ヘッダー
+    const nameHeaders = entries.map(([name, votes]) => {
+      const noteVal = votes._note || '';
+      const noteHtml = `<input type="text" class="note-input" data-name="${name}" value="${noteVal.replace(/"/g,'&quot;')}" placeholder="備考..." style="font-size:0.75rem;color:#aaa;border:none;border-bottom:1px dashed #ccc;outline:none;background:transparent;width:100%;margin-top:4px;padding:2px 0;font-weight:normal;">`;
+      return `<th style="min-width:80px">${name}<br>${noteHtml}</th>`;
     }).join('');
 
-    const rows = entries.map(([name, votes]) => {
-      const cells = dates.map((_, i) => {
+    // 日付ごとの行
+    const rows = dates.map((d, i) => {
+      const dt = new Date(d + 'T00:00:00');
+      const dateLabel = `${dt.getMonth()+1}/${dt.getDate()}(${weeks[dt.getDay()]})`;
+      const isBest = counts[i] === maxCount && maxCount > 0;
+      const cells = entries.map(([name, votes]) => {
         const v = votes[i] || 'o';
         const btns = [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
           `<button class="vote-btn ${cls} ${v===key?'selected':''}" data-name="${name}" data-idx="${i}" data-key="${key}">${label}</button>`
         ).join('');
         return `<td>${btns}</td>`;
       }).join('');
-      const noteVal = votes._note || '';
-      const noteHtml = `<input type="text" class="note-input" data-name="${name}" value="${noteVal.replace(/"/g,'&quot;')}" placeholder="備考を追加..." style="font-size:0.8rem;color:#888;border:none;border-bottom:1px dashed #ccc;outline:none;background:transparent;width:100%;margin-top:4px;padding:2px 0;">`;
-      return `<tr><td class="name-cell">${name}<br>${noteHtml}</td>${cells}</tr>`;
+      return `<tr class="${isBest?'best-row':''}"><td class="name-cell" style="${isBest?'color:var(--smbc-green);font-weight:700;':''}">${dateLabel}</td>${cells}<td class="count-cell ${isBest?'best':''}">${counts[i]}/${entries.length}</td></tr>`;
     }).join('');
-
-    const countCells = counts.map((c, i) =>
-      `<td class="${c===maxCount&&maxCount>0?'best':''}">${c}/${entries.length}</td>`
-    ).join('');
 
     wrap.innerHTML = `
       <table>
-        <thead><tr><th class="name-col">名前</th>${headers}</tr></thead>
-        <tbody>
-          ${rows}
-          <tr class="count-row"><td>◯の数</td>${countCells}</tr>
-        </tbody>
+        <thead><tr><th class="name-col">日付</th>${nameHeaders}<th style="min-width:50px">◯数</th></tr></thead>
+        <tbody>${rows}</tbody>
       </table>`;
 
     // 備考欄の編集イベント
