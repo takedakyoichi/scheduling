@@ -308,8 +308,9 @@
         ).join('');
         return `<td>${btns}</td>`;
       }).join('');
-      const note = votes._note ? `<span style="font-size:0.8rem;color:#888;">${votes._note}</span>` : '';
-      return `<tr><td class="name-cell">${name}${note ? '<br>' + note : ''}</td>${cells}</tr>`;
+      const noteVal = votes._note || '';
+      const noteHtml = `<input type="text" class="note-input" data-name="${name}" value="${noteVal.replace(/"/g,'&quot;')}" placeholder="備考を追加..." style="font-size:0.8rem;color:#888;border:none;border-bottom:1px dashed #ccc;outline:none;background:transparent;width:100%;margin-top:4px;padding:2px 0;">`;
+      return `<tr><td class="name-cell">${name}<br>${noteHtml}</td>${cells}</tr>`;
     }).join('');
 
     const countCells = counts.map((c, i) =>
@@ -324,6 +325,16 @@
           <tr class="count-row"><td>◯の数</td>${countCells}</tr>
         </tbody>
       </table>`;
+
+    // 備考欄の編集イベント
+    wrap.querySelectorAll('.note-input').forEach(input => {
+      input.addEventListener('change', async () => {
+        const name = input.dataset.name;
+        await updateDoc(doc(db, 'events', eventId), {
+          [`participants.${name}._note`]: input.value.trim()
+        });
+      });
+    });
 
     // 投票ボタンのイベント
     wrap.querySelectorAll('.vote-btn').forEach(btn => {
