@@ -167,7 +167,24 @@
     btn.className = 'btn-remove';
     btn.textContent = '✕';
     btn.addEventListener('click', () => row.remove());
+
+    const dayLabel = document.createElement('span');
+    dayLabel.style.cssText = 'min-width:3em;font-size:0.9rem;color:#888;';
+    const weeks = ['日','月','火','水','木','金','土'];
+    const updateDay = () => {
+      if (input.value) {
+        const dt = new Date(input.value + 'T00:00:00');
+        dayLabel.textContent = `(${weeks[dt.getDay()]})`;
+      } else {
+        dayLabel.textContent = '';
+      }
+    };
+    input.addEventListener('change', updateDay);
+    input.addEventListener('input', updateDay);
+    updateDay();
+
     row.appendChild(input);
+    row.appendChild(dayLabel);
     row.appendChild(btn);
     document.getElementById('dateList').appendChild(row);
   }
