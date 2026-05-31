@@ -17,402 +17,187 @@
       --radius: 12px;
       --shadow: 0 4px 24px rgba(0,80,40,0.10);
     }
-
     * { box-sizing: border-box; margin: 0; padding: 0; }
-
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', 'Yu Gothic UI', sans-serif;
       background: linear-gradient(160deg, #f0f7f3 0%, #e8f0ec 100%);
       min-height: 100vh;
       padding-bottom: 60px;
     }
-
-    /* ヘッダー */
     .header {
       background: linear-gradient(135deg, var(--green-dark) 0%, var(--green) 100%);
       padding: 0 24px;
       box-shadow: 0 2px 16px rgba(0,60,30,0.25);
-      position: sticky;
-      top: 0;
-      z-index: 100;
+      position: sticky; top: 0; z-index: 100;
     }
     .header-inner {
-      max-width: 760px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      height: 60px;
+      max-width: 760px; margin: 0 auto;
+      display: flex; align-items: center; gap: 12px; height: 60px;
     }
     .header-logo {
       width: 32px; height: 32px;
-      background: rgba(255,255,255,0.15);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 18px;
+      background: rgba(255,255,255,0.15); border-radius: 8px;
+      display: flex; align-items: center; justify-content: center; font-size: 18px;
     }
-    .header-titles h1 {
-      color: white;
-      font-size: 1.05rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-    }
-    .header-titles .subtitle {
-      color: rgba(255,255,255,0.6);
-      font-size: 0.7rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    /* ページ本体 */
+    .header-titles h1 { color: white; font-size: 1.05rem; font-weight: 700; letter-spacing: 0.06em; }
+    .header-titles .subtitle { color: rgba(255,255,255,0.6); font-size: 0.7rem; letter-spacing: 0.08em; text-transform: uppercase; }
     .page { max-width: 760px; margin: 0 auto; padding: 28px 16px 0; }
-
-    /* カード */
     .card {
-      background: white;
-      border-radius: var(--radius);
-      padding: 28px;
-      margin-bottom: 20px;
-      box-shadow: var(--shadow);
-      border: 1px solid rgba(0,105,52,0.08);
-      animation: fadeUp 0.3s ease;
+      background: white; border-radius: var(--radius); padding: 28px;
+      margin-bottom: 20px; box-shadow: var(--shadow);
+      border: 1px solid rgba(0,105,52,0.08); animation: fadeUp 0.3s ease;
     }
     @keyframes fadeUp {
       from { opacity: 0; transform: translateY(12px); }
       to   { opacity: 1; transform: translateY(0); }
     }
     .card-title {
-      font-size: 0.95rem;
-      font-weight: 700;
-      color: var(--green);
-      margin-bottom: 20px;
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding-bottom: 12px;
-      border-bottom: 2px solid var(--green-light);
+      font-size: 0.95rem; font-weight: 700; color: var(--green);
+      margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+      padding-bottom: 12px; border-bottom: 2px solid var(--green-light);
     }
     .card-title .icon {
-      width: 28px; height: 28px;
-      background: var(--green-light);
-      border-radius: 8px;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 14px;
+      width: 28px; height: 28px; background: var(--green-light);
+      border-radius: 8px; display: flex; align-items: center; justify-content: center; font-size: 14px;
     }
-
-    /* フォーム */
     .field { margin-bottom: 18px; }
     .field label {
-      display: block;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: var(--text-muted);
-      margin-bottom: 6px;
-      letter-spacing: 0.04em;
-      text-transform: uppercase;
+      display: block; font-size: 0.8rem; font-weight: 600;
+      color: var(--text-muted); margin-bottom: 6px;
+      letter-spacing: 0.04em; text-transform: uppercase;
     }
-    input[type="text"], input[type="date"] {
-      width: 100%;
-      padding: 11px 14px;
-      border: 1.5px solid var(--border);
-      border-radius: 8px;
-      font-size: 0.95rem;
-      outline: none;
-      color: var(--text);
-      transition: border-color 0.2s, box-shadow 0.2s;
-      background: #fafafa;
+    input[type="text"], input[type="date"], input[type="password"] {
+      width: 100%; padding: 11px 14px;
+      border: 1.5px solid var(--border); border-radius: 8px;
+      font-size: 0.95rem; outline: none; color: var(--text);
+      transition: border-color 0.2s, box-shadow 0.2s; background: #fafafa;
     }
-    input[type="text"]:focus, input[type="date"]:focus {
-      border-color: var(--green);
-      background: white;
+    input[type="text"]:focus, input[type="date"]:focus, input[type="password"]:focus {
+      border-color: var(--green); background: white;
       box-shadow: 0 0 0 3px rgba(0,105,52,0.12);
     }
-
-    /* ラジオグループ */
-    .radio-group {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 8px;
-    }
+    .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
     .radio-chip input[type="radio"] { display: none; }
     .radio-chip label {
-      display: inline-block;
-      padding: 7px 14px;
-      border-radius: 20px;
-      border: 1.5px solid var(--border);
-      font-size: 0.85rem;
-      font-weight: 500;
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.15s;
-      background: white;
-      text-transform: none;
-      letter-spacing: 0;
+      display: inline-block; padding: 7px 14px;
+      border-radius: 20px; border: 1.5px solid var(--border);
+      font-size: 0.85rem; font-weight: 500; color: var(--text-muted);
+      cursor: pointer; transition: all 0.15s; background: white;
+      text-transform: none; letter-spacing: 0;
     }
     .radio-chip input[type="radio"]:checked + label {
-      background: var(--green);
-      border-color: var(--green);
-      color: white;
-      box-shadow: 0 2px 8px rgba(0,105,52,0.25);
+      background: var(--green); border-color: var(--green);
+      color: white; box-shadow: 0 2px 8px rgba(0,105,52,0.25);
     }
-
-    /* 候補日リスト */
     .date-row {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      margin-bottom: 8px;
-      animation: fadeUp 0.2s ease;
+      display: flex; align-items: center; gap: 8px;
+      margin-bottom: 8px; animation: fadeUp 0.2s ease;
     }
     .date-row input[type="date"] { flex: 1; }
     .day-badge {
-      min-width: 36px;
-      text-align: center;
-      font-size: 0.8rem;
-      font-weight: 600;
-      color: white;
-      background: var(--green);
-      border-radius: 6px;
-      padding: 3px 6px;
+      min-width: 36px; text-align: center; font-size: 0.8rem;
+      font-weight: 600; color: white; background: var(--green);
+      border-radius: 6px; padding: 3px 6px;
     }
     .day-badge.weekend { background: #e55; }
     .btn-remove {
-      background: none; border: none;
-      color: #ccc; font-size: 1.1rem;
-      cursor: pointer; padding: 4px 8px;
-      border-radius: 6px;
-      transition: color 0.15s;
-      flex-shrink: 0;
+      background: none; border: none; color: #ccc; font-size: 1.1rem;
+      cursor: pointer; padding: 4px 8px; border-radius: 6px;
+      transition: color 0.15s; flex-shrink: 0;
     }
     .btn-remove:hover { color: #e55; }
-
-    /* ボタン */
     .btn {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 6px;
-      padding: 10px 20px;
-      border-radius: 8px;
-      border: none;
-      cursor: pointer;
-      font-size: 0.9rem;
-      font-weight: 600;
-      transition: all 0.15s;
-      letter-spacing: 0.02em;
+      display: inline-flex; align-items: center; justify-content: center;
+      gap: 6px; padding: 10px 20px; border-radius: 8px; border: none;
+      cursor: pointer; font-size: 0.9rem; font-weight: 600;
+      transition: all 0.15s; letter-spacing: 0.02em;
     }
     .btn:active { transform: scale(0.97); }
-    .btn-primary {
-      background: var(--green);
-      color: white;
-      box-shadow: 0 2px 8px rgba(0,105,52,0.3);
-    }
+    .btn-primary { background: var(--green); color: white; box-shadow: 0 2px 8px rgba(0,105,52,0.3); }
     .btn-primary:hover { background: var(--green-dark); box-shadow: 0 4px 12px rgba(0,105,52,0.4); }
     .btn-primary:disabled { background: #aaa; box-shadow: none; cursor: not-allowed; }
-    .btn-secondary {
-      background: var(--green-light);
-      color: var(--green);
-      border: 1.5px solid var(--green-mid);
-    }
+    .btn-secondary { background: var(--green-light); color: var(--green); border: 1.5px solid var(--green-mid); }
     .btn-secondary:hover { background: var(--green-mid); }
-    .btn-ghost {
-      background: white;
-      color: var(--text-muted);
-      border: 1.5px solid var(--border);
-    }
+    .btn-ghost { background: white; color: var(--text-muted); border: 1.5px solid var(--border); }
     .btn-ghost:hover { border-color: var(--green); color: var(--green); }
     .btn-full { width: 100%; margin-top: 8px; }
     .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
-
-    /* シェアボックス */
     .share-box {
       background: linear-gradient(135deg, #f0fff7, #e8f5ee);
-      border: 1.5px solid var(--green-mid);
-      border-radius: 10px;
-      padding: 16px;
-      margin-top: 20px;
-      display: none;
-      animation: fadeUp 0.3s ease;
+      border: 1.5px solid var(--green-mid); border-radius: 10px;
+      padding: 16px; margin-top: 20px; display: none; animation: fadeUp 0.3s ease;
     }
-    .share-box .share-label {
-      font-size: 0.85rem;
-      font-weight: 600;
-      color: var(--green);
-      margin-bottom: 10px;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-    }
+    .share-label { font-size: 0.85rem; font-weight: 600; color: var(--green); margin-bottom: 10px; display: flex; align-items: center; gap: 6px; }
     .share-url { display: flex; gap: 8px; }
-    .share-url input {
-      flex: 1;
-      font-size: 0.82rem;
-      background: white;
-      color: #333;
-    }
-
-    /* トースト通知 */
+    .share-url input { flex: 1; font-size: 0.82rem; background: white; color: #333; }
     .toast {
-      position: fixed;
-      bottom: 24px;
-      left: 50%;
+      position: fixed; bottom: 24px; left: 50%;
       transform: translateX(-50%) translateY(80px);
-      background: #1a1a1a;
-      color: white;
-      padding: 12px 20px;
-      border-radius: 10px;
-      font-size: 0.9rem;
-      font-weight: 500;
-      z-index: 1000;
-      transition: transform 0.3s ease;
-      pointer-events: none;
-      white-space: nowrap;
+      background: #1a1a1a; color: white; padding: 12px 20px;
+      border-radius: 10px; font-size: 0.9rem; font-weight: 500;
+      z-index: 1000; transition: transform 0.3s ease;
+      pointer-events: none; white-space: nowrap;
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
-
-    /* 回答フォーム */
     .answer-form {
-      background: var(--green-light);
-      border-radius: 10px;
-      padding: 16px;
-      margin-bottom: 20px;
-      border: 1px solid var(--green-mid);
+      background: var(--green-light); border-radius: 10px;
+      padding: 16px; margin-bottom: 20px; border: 1px solid var(--green-mid);
     }
     .answer-form-grid {
-      display: grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-bottom: 10px;
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: 10px; margin-bottom: 10px;
     }
     @media (max-width: 500px) { .answer-form-grid { grid-template-columns: 1fr; } }
     .answer-form input { margin-bottom: 0; background: white; }
-
-    /* テーブル */
+    .field-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
     .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 300px; }
     thead tr { background: linear-gradient(135deg, var(--green-dark), var(--green)); }
-    th {
-      padding: 12px 10px;
-      text-align: center;
-      color: white;
-      font-weight: 600;
-      white-space: nowrap;
-      font-size: 0.82rem;
-    }
+    th { padding: 12px 10px; text-align: center; color: white; font-weight: 600; white-space: nowrap; font-size: 0.82rem; }
     th.date-col { text-align: left; min-width: 90px; }
     tbody tr { transition: background 0.1s; }
     tbody tr:hover { background: #f9fafb; }
     tbody tr:last-child td { border-bottom: none; }
-    td {
-      padding: 10px 10px;
-      text-align: center;
-      border-bottom: 1px solid #f0f0f0;
-    }
-    td.date-cell {
-      text-align: left;
-      font-weight: 600;
-      color: var(--text);
-      white-space: nowrap;
-      font-size: 0.85rem;
-    }
-    td.date-cell.is-best {
-      color: var(--green);
-      background: var(--green-light);
-    }
-    td.date-cell.is-best::before {
-      content: '★ ';
-      color: var(--gold);
-    }
-
-    /* 投票ボタン */
+    td { padding: 10px 10px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+    td.date-cell { text-align: left; font-weight: 600; color: var(--text); white-space: nowrap; font-size: 0.85rem; }
+    td.date-cell.is-best { color: var(--green); background: var(--green-light); }
+    td.date-cell.is-best::before { content: '★ '; color: var(--gold); }
     .vote-btn {
-      background: none;
-      border: 2px solid transparent;
-      border-radius: 6px;
-      font-size: 1.1rem;
-      cursor: pointer;
-      padding: 3px 5px;
-      opacity: 0.2;
-      transition: all 0.15s;
+      background: none; border: 2px solid transparent; border-radius: 6px;
+      font-size: 1.1rem; cursor: pointer; padding: 3px 5px;
+      opacity: 0.2; transition: all 0.15s;
     }
     .vote-btn:hover { opacity: 0.6; transform: scale(1.1); }
     .vote-btn.selected { border-color: currentColor; opacity: 1; transform: scale(1.05); }
     .vote-btn.circle { color: #007a3d; }
     .vote-btn.triangle { color: var(--gold); }
     .vote-btn.cross { color: #c0392b; }
-
-    /* ポイント列 */
-    .point-cell {
-      font-weight: 700;
-      font-size: 0.95rem;
-      min-width: 52px;
-    }
-    .point-cell.is-best {
-      color: var(--green);
-      background: var(--green-light);
-    }
-
-    /* 参加者ヘッダー */
-    .participant-th {
-      min-width: 80px;
-      font-size: 0.82rem;
-    }
+    .point-cell { font-weight: 700; font-size: 0.95rem; min-width: 52px; }
+    .point-cell.is-best { color: var(--green); background: var(--green-light); }
+    .participant-th { min-width: 80px; font-size: 0.82rem; }
     .del-btn {
-      display: inline-block;
-      margin-top: 5px;
-      font-size: 0.68rem;
-      background: none;
-      border: 1px solid rgba(255,255,255,0.4);
-      color: rgba(255,255,255,0.8);
-      border-radius: 4px;
-      cursor: pointer;
-      padding: 1px 6px;
-      font-weight: normal;
-      transition: all 0.15s;
+      display: inline-block; margin-top: 5px; font-size: 0.68rem;
+      background: none; border: 1px solid rgba(255,255,255,0.4);
+      color: rgba(255,255,255,0.8); border-radius: 4px; cursor: pointer;
+      padding: 1px 6px; font-weight: normal; transition: all 0.15s;
     }
     .del-btn:hover { background: rgba(255,255,255,0.15); color: white; }
-
-    /* 備考行 */
     .note-row td { background: #fafafa; padding: 8px 10px; }
     .note-label { font-size: 0.78rem; color: var(--text-muted); font-weight: 600; }
     .note-input {
-      font-size: 0.8rem;
-      color: #555;
-      border: none;
-      border-bottom: 1.5px dashed var(--green-mid);
-      outline: none;
-      background: transparent;
-      width: 100%;
-      padding: 2px 0;
-      transition: border-color 0.2s;
+      font-size: 0.8rem; color: #555; border: none;
+      border-bottom: 1.5px dashed var(--green-mid); outline: none;
+      background: transparent; width: 100%; padding: 2px 0; transition: border-color 0.2s;
     }
     .note-input:focus { border-color: var(--green); }
-
-    /* ステータスバッジ */
     .legend {
-      display: flex;
-      gap: 16px;
-      flex-wrap: wrap;
-      margin-top: 12px;
-      padding-top: 12px;
-      border-top: 1px solid var(--border);
+      display: flex; gap: 16px; flex-wrap: wrap;
+      margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--border);
     }
-    .legend-item {
-      display: flex;
-      align-items: center;
-      gap: 4px;
-      font-size: 0.78rem;
-      color: var(--text-muted);
-    }
-
-    .empty-msg, .loading {
-      text-align: center;
-      color: #bbb;
-      padding: 40px;
-      font-size: 0.9rem;
-    }
+    .legend-item { display: flex; align-items: center; gap: 4px; font-size: 0.78rem; color: var(--text-muted); }
+    .pin-hint { font-size: 0.78rem; color: var(--text-muted); margin-top: 4px; }
+    .empty-msg, .loading { text-align: center; color: #bbb; padding: 40px; font-size: 0.9rem; }
     .loading::before { content: '⏳ '; }
-
     #viewCard { display: none; }
   </style>
 </head>
@@ -432,10 +217,7 @@
 
 <!-- イベント作成カード -->
 <div class="card" id="setupCard">
-  <div class="card-title">
-    <div class="icon">✏️</div>
-    イベントを作成
-  </div>
+  <div class="card-title"><div class="icon">✏️</div>イベントを作成</div>
 
   <div class="field">
     <label>イベント名</label>
@@ -475,6 +257,12 @@
     </div>
   </div>
 
+  <div class="field">
+    <label>管理者PIN（参加者の削除に必要）</label>
+    <input type="password" id="adminPin" placeholder="数字4桁など" autocomplete="new-password">
+    <div class="pin-hint">※ 設定したPINは忘れないようにメモしてください</div>
+  </div>
+
   <button class="btn btn-primary btn-full" id="createBtn" style="padding:14px;">
     🔗 イベントを作成してリンクを発行
   </button>
@@ -498,11 +286,11 @@
   <div class="answer-form">
     <div class="answer-form-grid">
       <div>
-        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">名前</div>
+        <div class="field-label">名前</div>
         <input type="text" id="participantName" placeholder="山田 太郎">
       </div>
       <div>
-        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">備考（アレルギー等）</div>
+        <div class="field-label">備考（アレルギー等）</div>
         <input type="text" id="participantNote" placeholder="例：魚介類アレルギー">
       </div>
     </div>
@@ -521,8 +309,7 @@
   </div>
 </div>
 
-</div><!-- .page -->
-
+</div>
 <div class="toast" id="toast"></div>
 
 <script type="module">
@@ -541,7 +328,8 @@
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
 
-  // トースト通知
+  // ── ユーティリティ ──────────────────────────
+
   function showToast(msg) {
     const t = document.getElementById('toast');
     t.textContent = msg;
@@ -549,17 +337,50 @@
     setTimeout(() => t.classList.remove('show'), 2500);
   }
 
-  // 祝日データ（2026〜2027年）
+  function debounce(fn, ms) {
+    let timer;
+    return (...args) => {
+      clearTimeout(timer);
+      timer = setTimeout(() => fn(...args), ms);
+    };
+  }
+
+  // 名前を正規化（全角→半角、大文字→小文字、前後空白除去）して比較用キーを返す
+  function normalizeName(name) {
+    return name.trim().normalize('NFKC').toLowerCase();
+  }
+
+  // ── 祝日データ（2026〜2030年）──────────────
+
   const HOLIDAYS = {
+    // 2026
     '2026-01-01':1,'2026-01-12':1,'2026-02-11':1,'2026-02-23':1,
     '2026-03-20':1,'2026-04-29':1,'2026-05-03':1,'2026-05-04':1,
     '2026-05-05':1,'2026-05-06':1,'2026-07-20':1,'2026-08-11':1,
     '2026-09-21':1,'2026-09-22':1,'2026-09-23':1,'2026-10-12':1,
     '2026-11-03':1,'2026-11-23':1,'2026-12-23':1,
+    // 2027
     '2027-01-01':1,'2027-01-11':1,'2027-02-11':1,'2027-02-23':1,
     '2027-03-22':1,'2027-04-29':1,'2027-05-03':1,'2027-05-04':1,
     '2027-05-05':1,'2027-07-19':1,'2027-08-11':1,'2027-09-20':1,
-    '2027-09-23':1,'2027-10-11':1,'2027-11-03':1,'2027-11-23':1
+    '2027-09-23':1,'2027-10-11':1,'2027-11-03':1,'2027-11-23':1,
+    // 2028
+    '2028-01-01':1,'2028-01-10':1,'2028-02-11':1,'2028-02-23':1,
+    '2028-03-20':1,'2028-04-29':1,'2028-05-03':1,'2028-05-04':1,
+    '2028-05-05':1,'2028-07-17':1,'2028-08-11':1,'2028-09-18':1,
+    '2028-09-22':1,'2028-10-09':1,'2028-11-03':1,'2028-11-23':1,
+    // 2029
+    '2029-01-01':1,'2029-01-08':1,'2029-02-11':1,'2029-02-12':1,
+    '2029-02-23':1,'2029-03-20':1,'2029-04-29':1,'2029-05-03':1,
+    '2029-05-04':1,'2029-05-05':1,'2029-07-16':1,'2029-08-11':1,
+    '2029-09-17':1,'2029-09-23':1,'2029-10-08':1,'2029-11-03':1,
+    '2029-11-23':1,
+    // 2030
+    '2030-01-01':1,'2030-01-14':1,'2030-02-11':1,'2030-02-23':1,
+    '2030-03-20':1,'2030-04-29':1,'2030-05-03':1,'2030-05-04':1,
+    '2030-05-05':1,'2030-05-06':1,'2030-07-15':1,'2030-08-11':1,
+    '2030-08-12':1,'2030-09-16':1,'2030-09-23':1,'2030-10-14':1,
+    '2030-11-03':1,'2030-11-04':1,'2030-11-23':1,
   };
 
   const WEEKS = ['日','月','火','水','木','金','土'];
@@ -570,6 +391,8 @@
     const dd = String(d.getDate()).padStart(2,'0');
     return `${yyyy}-${mm}-${dd}`;
   }
+
+  // ── 候補日UI ────────────────────────────────
 
   function addDateRow(value) {
     const row = document.createElement('div');
@@ -586,9 +409,7 @@
         const day = dt.getDay();
         badge.textContent = WEEKS[day];
         badge.className = 'day-badge' + (day === 0 || day === 6 ? ' weekend' : '');
-      } else {
-        badge.textContent = '';
-      }
+      } else { badge.textContent = ''; }
     };
     input.addEventListener('change', updateBadge);
     input.addEventListener('input', updateBadge);
@@ -631,16 +452,20 @@
 
   document.getElementById('addDateBtn').addEventListener('click', () => addDateRow(''));
 
+  // ── イベント作成 ──────────────────────────────
+
   document.getElementById('createBtn').addEventListener('click', async () => {
     const name = document.getElementById('eventName').value.trim();
     const dates = getDates();
+    const pin = document.getElementById('adminPin').value.trim();
     if (!name) { showToast('⚠️ イベント名を入力してください'); return; }
     if (dates.length === 0) { showToast('⚠️ 候補日を1つ以上選択してください'); return; }
+    if (!pin) { showToast('⚠️ 管理者PINを設定してください'); return; }
     const btn = document.getElementById('createBtn');
     btn.textContent = '作成中...';
     btn.disabled = true;
     const eventId = Math.random().toString(36).slice(2, 10);
-    await setDoc(doc(db, 'events', eventId), { name, dates, participants: {} });
+    await setDoc(doc(db, 'events', eventId), { name, dates, participants: {}, adminPin: pin });
     const url = `${location.origin}${location.pathname}?event=${eventId}`;
     document.getElementById('shareUrl').value = url;
     document.getElementById('shareBox').style.display = 'block';
@@ -656,7 +481,8 @@
     });
   });
 
-  // URLパラメータ
+  // ── 回答画面 ──────────────────────────────────
+
   const params = new URLSearchParams(location.search);
   const eventId = params.get('event');
 
@@ -676,20 +502,112 @@
     });
 
     document.getElementById('addParticipantBtn').addEventListener('click', async () => {
-      const name = document.getElementById('participantName').value.trim();
-      if (!name) { showToast('⚠️ 名前を入力してください'); return; }
+      const rawName = document.getElementById('participantName').value.trim();
+      if (!rawName) { showToast('⚠️ 名前を入力してください'); return; }
       const snap = await getDoc(eventRef);
       const data = snap.data();
-      if (data.participants && data.participants[name]) {
-        showToast('⚠️ 同じ名前が既に登録されています'); return;
-      }
+      const existing = data.participants || {};
+      // 正規化して重複チェック（大文字小文字・全角半角を無視）
+      const normalizedNew = normalizeName(rawName);
+      const isDuplicate = Object.keys(existing).some(n => normalizeName(n) === normalizedNew);
+      if (isDuplicate) { showToast('⚠️ 同じ名前が既に登録されています'); return; }
       const note = document.getElementById('participantNote').value.trim();
+      // デフォルトは未回答（空文字）
       const votes = { _note: note, _joinedAt: Date.now() };
-      data.dates.forEach((_, i) => votes[i] = 'o');
-      await updateDoc(eventRef, { [`participants.${name}`]: votes });
+      data.dates.forEach((_, i) => votes[i] = '');
+      await updateDoc(eventRef, { [`participants.${rawName}`]: votes });
       document.getElementById('participantName').value = '';
       document.getElementById('participantNote').value = '';
-      showToast(`✅ ${name} さんの回答を登録しました`);
+      showToast(`✅ ${rawName} さんの回答を登録しました`);
+    });
+  }
+
+  // ── テーブル描画（関数分割）─────────────────
+
+  function calcCounts(dates, entries) {
+    return dates.map((_, i) =>
+      entries.reduce((sum, [, v]) => sum + (v[i]==='o' ? 1 : v[i]==='t' ? 0.5 : 0), 0)
+    );
+  }
+
+  function buildNameHeaders(entries) {
+    return entries.map(([name]) =>
+      `<th class="participant-th">${name}<br>
+       <button class="del-btn" data-name="${name}">🗑 削除</button></th>`
+    ).join('');
+  }
+
+  function buildDateRows(dates, entries, counts) {
+    const maxCount = Math.max(...counts, 0);
+    return dates.map((d, i) => {
+      const dt = new Date(d + 'T00:00:00');
+      const day = dt.getDay();
+      const dateLabel = `${dt.getMonth()+1}/${dt.getDate()}(${WEEKS[day]})`;
+      const isBest = counts[i] === maxCount && maxCount > 0;
+      const cells = entries.map(([name, votes]) => buildVoteCell(name, i, votes[i] || '')).join('');
+      const countStr = Number.isInteger(counts[i]) ? counts[i] : counts[i].toFixed(1);
+      return `<tr>
+        <td class="date-cell${isBest?' is-best':''}">${dateLabel}</td>
+        ${cells}
+        <td class="point-cell${isBest?' is-best':''}">${countStr}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  function buildVoteCell(name, idx, current) {
+    const btns = [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
+      `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}">${label}</button>`
+    ).join('');
+    return `<td>${btns}</td>`;
+  }
+
+  function buildNoteRow(entries) {
+    const cells = entries.map(([name, votes]) => {
+      const noteVal = (votes._note || '').replace(/"/g,'&quot;');
+      return `<td><input type="text" class="note-input" data-name="${name}" value="${noteVal}" placeholder="備考を追加..."></td>`;
+    }).join('');
+    return `<tr class="note-row"><td class="date-cell note-label">備考</td>${cells}<td></td></tr>`;
+  }
+
+  function attachVoteHandlers(wrap) {
+    const debouncedUpdate = debounce(async (name, idx, key) => {
+      await updateDoc(doc(db, 'events', eventId), {
+        [`participants.${name}.${idx}`]: key
+      });
+    }, 500);
+
+    wrap.querySelectorAll('.vote-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        debouncedUpdate(btn.dataset.name, btn.dataset.idx, btn.dataset.key);
+      });
+    });
+  }
+
+  function attachNoteHandlers(wrap) {
+    wrap.querySelectorAll('.note-input').forEach(input => {
+      input.addEventListener('change', async () => {
+        await updateDoc(doc(db, 'events', eventId), {
+          [`participants.${input.dataset.name}._note`]: input.value.trim()
+        });
+        showToast('💾 備考を保存しました');
+      });
+    });
+  }
+
+  function attachDeleteHandlers(wrap) {
+    wrap.querySelectorAll('.del-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const name = btn.dataset.name;
+        const pin = prompt(`「${name}」を削除します。\n管理者PINを入力してください：`);
+        if (pin === null) return;
+        const snap = await getDoc(doc(db, 'events', eventId));
+        const data = snap.data();
+        if (pin !== data.adminPin) { showToast('❌ PINが正しくありません'); return; }
+        const newP = { ...data.participants };
+        delete newP[name];
+        await updateDoc(doc(db, 'events', eventId), { participants: newP });
+        showToast(`🗑 ${name} さんの回答を削除しました`);
+      });
     });
   }
 
@@ -701,89 +619,27 @@
       return;
     }
 
-    const counts = dates.map((_, i) =>
-      entries.reduce((sum, [, v]) => sum + (v[i]==='o' ? 1 : v[i]==='t' ? 0.5 : 0), 0)
-    );
-    const maxCount = Math.max(...counts);
-
     entries.sort((a, b) => (a[1]._joinedAt || 0) - (b[1]._joinedAt || 0));
-
-    const nameHeaders = entries.map(([name]) =>
-      `<th class="participant-th">${name}<br>
-       <button class="del-btn" data-name="${name}">🗑 削除</button></th>`
-    ).join('');
-
-    const rows = dates.map((d, i) => {
-      const dt = new Date(d + 'T00:00:00');
-      const day = dt.getDay();
-      const dateLabel = `${dt.getMonth()+1}/${dt.getDate()}(${WEEKS[day]})`;
-      const isBest = counts[i] === maxCount && maxCount > 0;
-      const cells = entries.map(([name, votes]) => {
-        const v = votes[i] || 'o';
-        return `<td>${[['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
-          `<button class="vote-btn ${cls} ${v===key?'selected':''}" data-name="${name}" data-idx="${i}" data-key="${key}">${label}</button>`
-        ).join('')}</td>`;
-      }).join('');
-      const countStr = Number.isInteger(counts[i]) ? counts[i] : counts[i].toFixed(1);
-      return `<tr>
-        <td class="date-cell${isBest?' is-best':''}">${dateLabel}</td>
-        ${cells}
-        <td class="point-cell${isBest?' is-best':''}">${countStr}</td>
-      </tr>`;
-    }).join('');
-
-    const noteCells = entries.map(([name, votes]) => {
-      const noteVal = (votes._note || '').replace(/"/g,'&quot;');
-      return `<td><input type="text" class="note-input" data-name="${name}" value="${noteVal}" placeholder="備考を追加..."></td>`;
-    }).join('');
+    const counts = calcCounts(dates, entries);
 
     wrap.innerHTML = `
       <div class="table-wrap">
         <table>
           <thead><tr>
             <th class="date-col">日付</th>
-            ${nameHeaders}
+            ${buildNameHeaders(entries)}
             <th style="min-width:52px">Pt</th>
           </tr></thead>
           <tbody>
-            ${rows}
-            <tr class="note-row">
-              <td class="date-cell note-label">備考</td>
-              ${noteCells}
-              <td></td>
-            </tr>
+            ${buildDateRows(dates, entries, counts)}
+            ${buildNoteRow(entries)}
           </tbody>
         </table>
       </div>`;
 
-    wrap.querySelectorAll('.del-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        const name = btn.dataset.name;
-        if (!confirm(`「${name}」の回答を削除しますか？`)) return;
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const newP = { ...snap.data().participants };
-        delete newP[name];
-        await updateDoc(doc(db, 'events', eventId), { participants: newP });
-        showToast(`🗑 ${name} さんの回答を削除しました`);
-      });
-    });
-
-    wrap.querySelectorAll('.note-input').forEach(input => {
-      input.addEventListener('change', async () => {
-        await updateDoc(doc(db, 'events', eventId), {
-          [`participants.${input.dataset.name}._note`]: input.value.trim()
-        });
-        showToast('💾 備考を保存しました');
-      });
-    });
-
-    wrap.querySelectorAll('.vote-btn').forEach(btn => {
-      btn.addEventListener('click', async () => {
-        await updateDoc(doc(db, 'events', eventId), {
-          [`participants.${btn.dataset.name}.${btn.dataset.idx}`]: btn.dataset.key
-        });
-      });
-    });
+    attachVoteHandlers(wrap);
+    attachNoteHandlers(wrap);
+    attachDeleteHandlers(wrap);
   }
 </script>
 </body>
