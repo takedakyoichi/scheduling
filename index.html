@@ -498,7 +498,7 @@
   <div class="answer-form">
     <div class="answer-form-grid">
       <div>
-        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">お名前</div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:6px;text-transform:uppercase;letter-spacing:0.04em;">名前</div>
         <input type="text" id="participantName" placeholder="山田 太郎">
       </div>
       <div>
@@ -515,7 +515,7 @@
 
   <div class="legend">
     <div class="legend-item"><span style="color:#007a3d;font-size:1rem;">◯</span> 参加できる（1pt）</div>
-    <div class="legend-item"><span style="color:var(--gold);font-size:1rem;">△</span> たぶん参加（0.5pt）</div>
+    <div class="legend-item"><span style="color:var(--gold);font-size:1rem;">△</span> おそらく参加可能（0.5pt）</div>
     <div class="legend-item"><span style="color:#c0392b;font-size:1rem;">✕</span> 参加できない（0pt）</div>
     <div class="legend-item"><span style="color:var(--gold);">★</span> 最高得点日</div>
   </div>
@@ -677,7 +677,7 @@
 
     document.getElementById('addParticipantBtn').addEventListener('click', async () => {
       const name = document.getElementById('participantName').value.trim();
-      if (!name) { showToast('⚠️ お名前を入力してください'); return; }
+      if (!name) { showToast('⚠️ 名前を入力してください'); return; }
       const snap = await getDoc(eventRef);
       const data = snap.data();
       if (data.participants && data.participants[name]) {
