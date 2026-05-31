@@ -5,64 +5,96 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>日程調整</title>
   <style>
+    /* SMBC カラー定義 */
+    :root {
+      --smbc-green: #006934;
+      --smbc-green-dark: #004d26;
+      --smbc-green-light: #e6f2ec;
+      --smbc-green-mid: #c2dece;
+      --smbc-gold: #c8a84b;
+      --smbc-text: #1a1a1a;
+    }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
-      background: #f0f4ff;
+      background: #f0f5f2;
       min-height: 100vh;
-      padding: 24px 16px;
+      padding: 0 0 40px;
     }
-    h1 { text-align: center; font-size: 1.6rem; color: #3a3a5c; margin-bottom: 24px; }
+
+    /* ヘッダーバー */
+    .header {
+      background: var(--smbc-green);
+      padding: 16px 24px;
+      margin-bottom: 28px;
+      box-shadow: 0 2px 8px rgba(0,80,40,0.2);
+    }
+    .header h1 {
+      color: white;
+      font-size: 1.3rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+      text-align: left;
+      margin: 0;
+    }
+    .header .subtitle {
+      color: rgba(255,255,255,0.7);
+      font-size: 0.8rem;
+      margin-top: 2px;
+    }
+
     .card {
       background: white;
-      border-radius: 16px;
+      border-radius: 4px;
       padding: 24px;
       max-width: 720px;
-      margin: 0 auto 24px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+      margin: 0 auto 20px;
+      box-shadow: 0 1px 6px rgba(0,80,40,0.1);
+      border-top: 3px solid var(--smbc-green);
     }
-    .card h2 { font-size: 1.1rem; color: #5a5a8a; margin-bottom: 16px; }
-    label { display: block; font-size: 0.9rem; color: #555; margin-bottom: 4px; }
+    .card h2 { font-size: 1rem; color: var(--smbc-green); margin-bottom: 16px; font-weight: 700; border-bottom: 1px solid var(--smbc-green-mid); padding-bottom: 8px; }
+    label { display: block; font-size: 0.85rem; color: #444; margin-bottom: 4px; font-weight: 500; }
     input[type="text"], input[type="date"] {
       width: 100%; padding: 10px 12px;
-      border: 1.5px solid #dde; border-radius: 8px;
+      border: 1px solid #ccd; border-radius: 3px;
       font-size: 1rem; outline: none; margin-bottom: 12px;
+      color: var(--smbc-text);
     }
-    input:focus { border-color: #7c7cff; }
+    input:focus { border-color: var(--smbc-green); box-shadow: 0 0 0 2px rgba(0,105,52,0.15); }
     .date-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
     .date-row input { margin-bottom: 0; flex: 1; }
-    .btn-remove { background: none; border: none; color: #bbb; font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: 6px; }
-    .btn { display: inline-block; padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600; }
-    .btn-primary { background: #7c7cff; color: white; }
-    .btn-secondary { background: #f0f0ff; color: #7c7cff; margin-top: 8px; }
+    .btn-remove { background: none; border: none; color: #bbb; font-size: 1.2rem; cursor: pointer; padding: 4px 8px; border-radius: 3px; }
+    .btn-remove:hover { color: #e55; }
+    .btn { display: inline-block; padding: 10px 20px; border-radius: 3px; border: none; cursor: pointer; font-size: 0.95rem; font-weight: 600; transition: background 0.15s; }
+    .btn-primary { background: var(--smbc-green); color: white; }
+    .btn-primary:hover { background: var(--smbc-green-dark); }
+    .btn-secondary { background: var(--smbc-green-light); color: var(--smbc-green); margin-top: 8px; border: 1px solid var(--smbc-green-mid); }
+    .btn-secondary:hover { background: var(--smbc-green-mid); }
     .btn-full { width: 100%; margin-top: 16px; }
     .radio-group { display: flex; gap: 16px; margin-bottom: 12px; flex-wrap: wrap; }
-    .radio-group label { display: flex; align-items: center; gap: 4px; font-size: 1rem; cursor: pointer; margin-bottom: 0; }
+    .radio-group label { display: flex; align-items: center; gap: 4px; font-size: 0.95rem; cursor: pointer; margin-bottom: 0; font-weight: normal; }
+    input[type="radio"] { accent-color: var(--smbc-green); }
     .share-box {
-      background: #f5f5ff; border-radius: 10px; padding: 16px;
-      margin-top: 16px; display: none;
+      background: var(--smbc-green-light); border-radius: 4px; padding: 16px;
+      margin-top: 16px; display: none; border: 1px solid var(--smbc-green-mid);
     }
-    .share-box p { font-size: 0.9rem; color: #555; margin-bottom: 8px; }
-    .share-url {
-      display: flex; gap: 8px;
-    }
-    .share-url input {
-      flex: 1; margin-bottom: 0; font-size: 0.85rem;
-      background: white; color: #333;
-    }
+    .share-box p { font-size: 0.9rem; color: #333; margin-bottom: 8px; }
+    .share-url { display: flex; gap: 8px; }
+    .share-url input { flex: 1; margin-bottom: 0; font-size: 0.85rem; background: white; color: #333; }
     .share-url button { white-space: nowrap; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 16px; overflow-x: auto; display: block; }
-    th { background: #f5f5ff; padding: 10px 8px; text-align: center; color: #5a5a8a; border-bottom: 2px solid #e8e8ff; white-space: nowrap; }
+    th { background: var(--smbc-green); padding: 10px 8px; text-align: center; color: white; white-space: nowrap; font-weight: 600; }
     th.name-col { text-align: left; min-width: 80px; }
-    td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #f0f0f0; }
-    td.name-cell { text-align: left; font-weight: 600; color: #3a3a5c; white-space: nowrap; }
-    .vote-btn { background: none; border: 2px solid transparent; border-radius: 6px; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; opacity: 0.3; }
+    td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #eee; }
+    td.name-cell { text-align: left; font-weight: 600; color: var(--smbc-text); white-space: nowrap; }
+    .vote-btn { background: none; border: 2px solid transparent; border-radius: 4px; font-size: 1.2rem; cursor: pointer; padding: 2px 6px; opacity: 0.3; }
     .vote-btn.selected { border-color: currentColor; opacity: 1; }
-    .vote-btn.circle { color: #4caf82; }
-    .vote-btn.triangle { color: #f0a500; }
-    .vote-btn.cross { color: #e55; }
-    .count-row td { font-size: 0.85rem; color: #888; border-top: 2px solid #e8e8ff; }
-    .best { background: #f0fff8; font-weight: bold; color: #2a8a5a !important; }
+    .vote-btn.circle { color: #007a3d; }
+    .vote-btn.triangle { color: #c8a84b; }
+    .vote-btn.cross { color: #c0392b; }
+    .count-row td { font-size: 0.85rem; color: #666; border-top: 2px solid var(--smbc-green-mid); background: #fafafa; }
+    .best { background: var(--smbc-green-light) !important; font-weight: bold; color: var(--smbc-green) !important; }
     .name-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
     .name-input-row input { margin-bottom: 0; flex: 1; }
     .empty-msg { text-align: center; color: #aaa; padding: 24px; }
@@ -72,7 +104,10 @@
 </head>
 <body>
 
-<h1>日程調整</h1>
+<div class="header">
+  <h1>日程調整</h1>
+  <div class="subtitle">Scheduling Tool</div>
+</div>
 
 <!-- イベント作成カード -->
 <div class="card" id="setupCard">
