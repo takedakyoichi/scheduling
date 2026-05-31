@@ -1,0 +1,324 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>日程調整</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Hiragino Sans', sans-serif;
+      background: #f0f4ff;
+      min-height: 100vh;
+      padding: 24px 16px;
+    }
+    h1 { text-align: center; font-size: 1.6rem; color: #3a3a5c; margin-bottom: 24px; }
+    .card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      max-width: 680px;
+      margin: 0 auto 24px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+    }
+    .card h2 { font-size: 1.1rem; color: #5a5a8a; margin-bottom: 16px; }
+    label { display: block; font-size: 0.9rem; color: #555; margin-bottom: 4px; }
+    input[type="text"], input[type="date"] {
+      width: 100%;
+      padding: 10px 12px;
+      border: 1.5px solid #dde;
+      border-radius: 8px;
+      font-size: 1rem;
+      outline: none;
+      margin-bottom: 12px;
+    }
+    input:focus { border-color: #7c7cff; }
+    .date-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+    .date-row input { margin-bottom: 0; flex: 1; }
+    .btn-remove {
+      background: none; border: none; color: #bbb;
+      font-size: 1.2rem; cursor: pointer; padding: 4px 8px;
+      border-radius: 6px;
+    }
+    .btn {
+      display: inline-block; padding: 10px 20px;
+      border-radius: 8px; border: none; cursor: pointer;
+      font-size: 0.95rem; font-weight: 600;
+    }
+    .btn-primary { background: #7c7cff; color: white; }
+    .btn-secondary { background: #f0f0ff; color: #7c7cff; margin-top: 8px; }
+    .btn-full { width: 100%; margin-top: 16px; }
+    #answerCard { display: none; }
+    table { width: 100%; border-collapse: collapse; font-size: 0.9rem; margin-bottom: 16px; }
+    th { background: #f5f5ff; padding: 10px 8px; text-align: center; color: #5a5a8a; border-bottom: 2px solid #e8e8ff; }
+    th.name-col { text-align: left; min-width: 80px; }
+    td { padding: 10px 8px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+    td.name-cell { text-align: left; font-weight: 600; color: #3a3a5c; }
+    .vote-btn {
+      background: none; border: 2px solid transparent;
+      border-radius: 6px; font-size: 1.2rem; cursor: pointer;
+      padding: 2px 6px; opacity: 0.3;
+    }
+    .vote-btn.selected { border-color: currentColor; opacity: 1; }
+    .vote-btn.circle { color: #4caf82; }
+    .vote-btn.triangle { color: #f0a500; }
+    .vote-btn.cross { color: #e55; }
+    .count-row td { font-size: 0.85rem; color: #888; border-top: 2px solid #e8e8ff; }
+    .best { background: #f0fff8; font-weight: bold; color: #2a8a5a !important; }
+    .name-input-row { display: flex; gap: 8px; margin-bottom: 12px; }
+    .name-input-row input { margin-bottom: 0; flex: 1; }
+    .empty-msg { text-align: center; color: #aaa; padding: 24px; }
+  </style>
+</head>
+<body>
+
+<h1>日程調整</h1>
+
+<div class="card" id="setupCard">
+  <h2>📅 イベントを作成</h2>
+  <label>イベント名</label>
+  <input type="text" id="eventName" placeholder="例：6月の飲み会">
+  <label>開始日</label>
+  <input type="date" id="startDate">
+
+  <label>期間</label>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <label style="display:flex;align-items:center;gap:4px;font-size:1rem;cursor:pointer">
+      <input type="radio" name="weeks" value="1"> 1週間
+    </label>
+    <label style="display:flex;align-items:center;gap:4px;font-size:1rem;cursor:pointer">
+      <input type="radio" name="weeks" value="2"> 2週間
+    </label>
+    <label style="display:flex;align-items:center;gap:4px;font-size:1rem;cursor:pointer">
+      <input type="radio" name="weeks" value="3" checked> 3週間
+    </label>
+  </div>
+
+  <label>曜日</label>
+  <div style="display:flex;gap:8px;margin-bottom:12px">
+    <label style="display:flex;align-items:center;gap:4px;font-size:1rem;cursor:pointer">
+      <input type="radio" name="daytype" value="weekday" checked> 平日のみ（祝日除く）
+    </label>
+    <label style="display:flex;align-items:center;gap:4px;font-size:1rem;cursor:pointer">
+      <input type="radio" name="daytype" value="all"> 土日祝を含む
+    </label>
+  </div>
+
+  <button class="btn btn-secondary" id="autoFillBtn">候補日を自動入力</button>
+  <label style="margin-top:12px">候補日（個別に追加・削除できます）</label>
+  <div id="dateList"></div>
+  <button class="btn btn-secondary" id="addDateBtn">＋ 候補日を追加</button>
+  <button class="btn btn-primary btn-full" id="createBtn">作成する</button>
+</div>
+
+<div class="card" id="answerCard">
+  <h2 id="answerTitle">✏️ 出欠を回答する</h2>
+  <div class="name-input-row">
+    <input type="text" id="participantName" placeholder="あなたの名前">
+    <button class="btn btn-primary" id="addParticipantBtn">回答する</button>
+  </div>
+  <div id="tableWrap"><p class="empty-msg">まだ回答がありません</p></div>
+</div>
+
+<script>
+  var participants = [];
+
+  function getDateInputs() {
+    return document.querySelectorAll('#dateList input[type=date]');
+  }
+
+  function getDates() {
+    var inputs = getDateInputs();
+    var result = [];
+    for (var i = 0; i < inputs.length; i++) {
+      if (inputs[i].value) result.push(inputs[i].value);
+    }
+    return result;
+  }
+
+  function addDateRow(value) {
+    var row = document.createElement('div');
+    row.className = 'date-row';
+
+    var input = document.createElement('input');
+    input.type = 'date';
+    if (value) input.value = value;
+
+    var btn = document.createElement('button');
+    btn.className = 'btn-remove';
+    btn.textContent = '✕';
+    btn.addEventListener('click', function() {
+      row.parentNode.removeChild(row);
+    });
+
+    row.appendChild(input);
+    row.appendChild(btn);
+    document.getElementById('dateList').appendChild(row);
+  }
+
+  // 日本の祝日（2026〜2027年）
+  var HOLIDAYS = {
+    '2026-01-01':1,'2026-01-12':1,'2026-02-11':1,'2026-02-23':1,
+    '2026-03-20':1,'2026-04-29':1,'2026-05-03':1,'2026-05-04':1,
+    '2026-05-05':1,'2026-05-06':1,'2026-07-20':1,'2026-08-11':1,
+    '2026-09-21':1,'2026-09-22':1,'2026-09-23':1,'2026-10-12':1,
+    '2026-11-03':1,'2026-11-23':1,'2026-12-23':1,
+    '2027-01-01':1,'2027-01-11':1,'2027-02-11':1,'2027-02-23':1,
+    '2027-03-22':1,'2027-04-29':1,'2027-05-03':1,'2027-05-04':1,
+    '2027-05-05':1,'2027-07-19':1,'2027-08-11':1,'2027-09-20':1,
+    '2027-09-23':1,'2027-10-11':1,'2027-11-03':1,'2027-11-23':1
+  };
+
+  function toDateStr(d) {
+    var yyyy = d.getFullYear();
+    var mm = String(d.getMonth() + 1).padStart(2, '0');
+    var dd = String(d.getDate()).padStart(2, '0');
+    return yyyy + '-' + mm + '-' + dd;
+  }
+
+  function isHoliday(dateStr) {
+    return !!HOLIDAYS[dateStr];
+  }
+
+  document.getElementById('autoFillBtn').addEventListener('click', function() {
+    var startVal = document.getElementById('startDate').value;
+    if (!startVal) { alert('開始日を選択してください'); return; }
+
+    var weeksEl = document.querySelector('input[name="weeks"]:checked');
+    var daytypeEl = document.querySelector('input[name="daytype"]:checked');
+    var weeks = weeksEl ? parseInt(weeksEl.value) : 3;
+    var weekdayOnly = daytypeEl ? daytypeEl.value === 'weekday' : true;
+
+    document.getElementById('dateList').innerHTML = '';
+
+    var current = new Date(startVal + 'T00:00:00');
+    var end = new Date(startVal + 'T00:00:00');
+    end.setDate(end.getDate() + weeks * 7);
+
+    while (current < end) {
+      var dateStr = toDateStr(current);
+      var day = current.getDay();
+      var skip = weekdayOnly && (day === 0 || day === 6 || isHoliday(dateStr));
+      if (!skip) addDateRow(dateStr);
+      current.setDate(current.getDate() + 1);
+    }
+  });
+
+  document.getElementById('addDateBtn').addEventListener('click', function() { addDateRow(''); });
+
+  document.getElementById('createBtn').addEventListener('click', function() {
+    var name = document.getElementById('eventName').value.trim();
+    var dates = getDates();
+    if (!name) { alert('イベント名を入力してください'); return; }
+    if (dates.length === 0) { alert('候補日を1つ以上選択してください'); return; }
+
+    document.getElementById('setupCard').style.display = 'none';
+    document.getElementById('answerCard').style.display = 'block';
+    document.getElementById('answerTitle').textContent = '✏️ ' + name + ' — 出欠を回答';
+    renderTable();
+  });
+
+  document.getElementById('addParticipantBtn').addEventListener('click', function() {
+    var name = document.getElementById('participantName').value.trim();
+    if (!name) { alert('名前を入力してください'); return; }
+    for (var i = 0; i < participants.length; i++) {
+      if (participants[i].name === name) { alert('同じ名前が既に登録されています'); return; }
+    }
+    var dates = getDates();
+    var votes = {};
+    for (var j = 0; j < dates.length; j++) votes[j] = 'o';
+    participants.push({ name: name, votes: votes });
+    document.getElementById('participantName').value = '';
+    renderTable();
+  });
+
+  function renderTable() {
+    var dates = getDates();
+    var wrap = document.getElementById('tableWrap');
+    if (participants.length === 0) {
+      wrap.innerHTML = '<p class="empty-msg">まだ回答がありません</p>';
+      return;
+    }
+
+    var counts = [];
+    for (var i = 0; i < dates.length; i++) {
+      var c = 0;
+      for (var j = 0; j < participants.length; j++) {
+        if (participants[j].votes[i] === 'o') c++;
+      }
+      counts.push(c);
+    }
+    var maxCount = Math.max.apply(null, counts);
+
+    var table = document.createElement('table');
+
+    // ヘッダー
+    var thead = document.createElement('thead');
+    var hrow = document.createElement('tr');
+    var th0 = document.createElement('th');
+    th0.className = 'name-col';
+    th0.textContent = '名前';
+    hrow.appendChild(th0);
+    for (var i = 0; i < dates.length; i++) {
+      var dt = new Date(dates[i] + 'T00:00:00');
+      var weeks = ['日','月','火','水','木','金','土'];
+      var label = (dt.getMonth()+1) + '/' + dt.getDate() + '(' + weeks[dt.getDay()] + ')';
+      var th = document.createElement('th');
+      th.textContent = label;
+      hrow.appendChild(th);
+    }
+    thead.appendChild(hrow);
+    table.appendChild(thead);
+
+    // 各参加者の行
+    var tbody = document.createElement('tbody');
+    for (var pi = 0; pi < participants.length; pi++) {
+      (function(p) {
+        var tr = document.createElement('tr');
+        var nameTd = document.createElement('td');
+        nameTd.className = 'name-cell';
+        nameTd.textContent = p.name;
+        tr.appendChild(nameTd);
+        for (var di = 0; di < dates.length; di++) {
+          (function(dateIdx) {
+            var td = document.createElement('td');
+            var symbols = [{key:'o', label:'◯', cls:'circle'}, {key:'t', label:'△', cls:'triangle'}, {key:'x', label:'✕', cls:'cross'}];
+            symbols.forEach(function(s) {
+              var btn = document.createElement('button');
+              btn.className = 'vote-btn ' + s.cls;
+              btn.textContent = s.label;
+              if (p.votes[dateIdx] === s.key) btn.classList.add('selected');
+              btn.addEventListener('click', function() {
+                p.votes[dateIdx] = s.key;
+                renderTable();
+              });
+              td.appendChild(btn);
+            });
+            tr.appendChild(td);
+          })(di);
+        }
+        tbody.appendChild(tr);
+      })(participants[pi]);
+    }
+
+    // 集計行
+    var ctr = document.createElement('tr');
+    ctr.className = 'count-row';
+    var ctd0 = document.createElement('td');
+    ctd0.textContent = '◯の数';
+    ctr.appendChild(ctd0);
+    for (var i = 0; i < dates.length; i++) {
+      var ctd = document.createElement('td');
+      ctd.textContent = counts[i] + '/' + participants.length;
+      if (counts[i] === maxCount && maxCount > 0) ctd.className = 'best';
+      ctr.appendChild(ctd);
+    }
+    tbody.appendChild(ctr);
+    table.appendChild(tbody);
+
+    wrap.innerHTML = '';
+    wrap.appendChild(table);
+  }
+</script>
+</body>
+</html>
