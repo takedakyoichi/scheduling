@@ -324,18 +324,17 @@
       return;
     }
 
+    // △を0.5ポイントとしてカウント
     const counts = dates.map((_, i) =>
-      entries.filter(([, v]) => v[i] === 'o').length
+      entries.reduce((sum, [, v]) => sum + (v[i]==='o' ? 1 : v[i]==='t' ? 0.5 : 0), 0)
     );
     const maxCount = Math.max(...counts);
     const weeks = ['日','月','火','水','木','金','土'];
 
-    // 参加者名ヘッダー
-    const nameHeaders = entries.map(([name, votes]) => {
-      const noteVal = votes._note || '';
-      const noteHtml = `<input type="text" class="note-input" data-name="${name}" value="${noteVal.replace(/"/g,'&quot;')}" placeholder="備考..." style="font-size:0.75rem;color:#aaa;border:none;border-bottom:1px dashed #ccc;outline:none;background:transparent;width:100%;margin-top:4px;padding:2px 0;font-weight:normal;">`;
-      return `<th style="min-width:80px">${name}<br>${noteHtml}</th>`;
-    }).join('');
+    // 参加者名ヘッダー（備考なし）
+    const nameHeaders = entries.map(([name]) =>
+      `<th style="min-width:80px">${name}</th>`
+    ).join('');
 
     // 日付ごとの行
     const rows = dates.map((d, i) => {
@@ -349,13 +348,23 @@
         ).join('');
         return `<td>${btns}</td>`;
       }).join('');
-      return `<tr class="${isBest?'best-row':''}"><td class="name-cell" style="${isBest?'color:var(--smbc-green);font-weight:700;':''}">${dateLabel}</td>${cells}<td class="count-cell ${isBest?'best':''}">${counts[i]}/${entries.length}</td></tr>`;
+      const countStr = Number.isInteger(counts[i]) ? counts[i] : counts[i].toFixed(1);
+      return `<tr><td class="name-cell" style="${isBest?'color:var(--smbc-green);font-weight:700;':''}">${dateLabel}</td>${cells}<td class="count-cell ${isBest?'best':''}">${countStr}</td></tr>`;
+    }).join('');
+
+    // 備考行
+    const noteCells = entries.map(([name, votes]) => {
+      const noteVal = votes._note || '';
+      return `<td><input type="text" class="note-input" data-name="${name}" value="${noteVal.replace(/"/g,'&quot;')}" placeholder="備考を追加..." style="font-size:0.8rem;color:#666;border:none;border-bottom:1px dashed #ccc;outline:none;background:transparent;width:100%;padding:2px 0;"></td>`;
     }).join('');
 
     wrap.innerHTML = `
       <table>
-        <thead><tr><th class="name-col">日付</th>${nameHeaders}<th style="min-width:50px">◯数</th></tr></thead>
-        <tbody>${rows}</tbody>
+        <thead><tr><th class="name-col">日付</th>${nameHeaders}<th style="min-width:50px">ポイント</th></tr></thead>
+        <tbody>
+          ${rows}
+          <tr class="count-row"><td style="color:#555;font-size:0.85rem;">備考</td>${noteCells}<td></td></tr>
+        </tbody>
       </table>`;
 
     // 備考欄の編集イベント
