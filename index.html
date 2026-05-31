@@ -116,8 +116,12 @@
   <h2 id="viewTitle">✏️ 出欠を回答する</h2>
   <div class="name-input-row">
     <input type="text" id="participantName" placeholder="あなたの名前">
-    <button class="btn btn-primary" id="addParticipantBtn">回答する</button>
   </div>
+  <div style="margin-bottom:12px">
+    <label>備考（苦手な食べ物・アレルギー・コメントなど）</label>
+    <input type="text" id="participantNote" placeholder="例：魚介類アレルギーあり" style="margin-bottom:0">
+  </div>
+  <button class="btn btn-primary" id="addParticipantBtn" style="margin-bottom:16px">回答する</button>
   <div id="tableWrap"><p class="loading">読み込み中...</p></div>
 </div>
 
@@ -268,10 +272,12 @@
       if (data.participants && data.participants[name]) {
         alert('同じ名前が既に登録されています'); return;
       }
-      const votes = {};
+      const note = document.getElementById('participantNote').value.trim();
+      const votes = { _note: note };
       data.dates.forEach((_, i) => votes[i] = 'o');
       await updateDoc(eventRef, { [`participants.${name}`]: votes });
       document.getElementById('participantName').value = '';
+      document.getElementById('participantNote').value = '';
     });
   }
 
@@ -302,7 +308,8 @@
         ).join('');
         return `<td>${btns}</td>`;
       }).join('');
-      return `<tr><td class="name-cell">${name}</td>${cells}</tr>`;
+      const note = votes._note ? `<span style="font-size:0.8rem;color:#888;">${votes._note}</span>` : '';
+      return `<tr><td class="name-cell">${name}${note ? '<br>' + note : ''}</td>${cells}</tr>`;
     }).join('');
 
     const countCells = counts.map((c, i) =>
