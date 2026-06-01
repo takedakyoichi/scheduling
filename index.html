@@ -319,7 +319,7 @@
     </div>
     <div id="dateList"></div>
     <div class="btn-row" style="margin-top:8px">
-      <button class="btn btn-secondary" id="autoFillBtn" disabled style="opacity:0.4;cursor:not-allowed;">⚡ 自動入力</button>
+      <button class="btn" id="autoFillBtn" disabled style="background:#f0f0f0;color:#aaa;border:1.5px solid #ddd;cursor:not-allowed;">⚡ 自動入力</button>
       <button class="btn btn-ghost" id="addDateBtn">＋ 手動で追加</button>
     </div>
   </div>
@@ -549,8 +549,11 @@
     const btn = document.getElementById('autoFillBtn');
     const ready = startVal && weeksEl && daytypeEl;
     btn.disabled = !ready;
-    btn.style.opacity = ready ? '1' : '0.4';
-    btn.style.cursor = ready ? 'pointer' : 'not-allowed';
+    if (ready) {
+      btn.style.cssText = 'background:var(--green-light);color:var(--green);border:1.5px solid var(--green-mid);cursor:pointer;';
+    } else {
+      btn.style.cssText = 'background:#f0f0f0;color:#aaa;border:1.5px solid #ddd;cursor:not-allowed;';
+    }
   }
   document.getElementById('startDate').addEventListener('change', checkAutoFillReady);
   document.querySelectorAll('input[name="weeks"], input[name="daytype"]').forEach(el => {
