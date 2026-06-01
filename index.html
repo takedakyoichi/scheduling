@@ -461,6 +461,24 @@
     <input type="number" id="totalAmount" placeholder="例：25000" min="0" style="font-size:1.1rem;">
   </div>
 
+  <!-- 振込先口座 -->
+  <div id="bankInfoWrap" style="margin-bottom:20px;">
+    <div style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px;">🏦 振込先口座</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+      <div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">銀行名</div>
+        <input type="text" id="bankName" placeholder="例：三井住友銀行" style="margin-bottom:0;">
+      </div>
+      <div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">支店名</div>
+        <input type="text" id="bankBranch" placeholder="例：新橋支店" style="margin-bottom:0;">
+      </div>
+      <div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">口座番号</div>
+        <input type="text" id="bankAccount" placeholder="例：1234567" style="margin-bottom:0;">
+      </div>
+    </div>
+  </div>
   <!-- 精算結果 -->
   <div id="settleResult"></div>
 
@@ -1184,6 +1202,7 @@
 
     const settle = data.settle || {};
     const published = data.settlePublished || false;
+    const bankInfo = settle.bankInfo || {};
 
     // 公開済みバッジ
     const badge = document.getElementById('publishedBadge');
@@ -1191,6 +1210,28 @@
 
     document.getElementById('totalAmount').value = settle.total || '';
     document.getElementById('totalAmount').disabled = readOnly;
+
+    // 口座情報の表示
+    const bankWrap = document.getElementById('bankInfoWrap');
+    if (readOnly) {
+      // 参加者：テキスト表示（入力欄なし）
+      if (bankInfo.name || bankInfo.branch || bankInfo.account) {
+        bankWrap.innerHTML = `
+          <div style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:10px;">🏦 振込先口座</div>
+          <div style="background:#f5f5f5;border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:0.9rem;display:flex;gap:24px;flex-wrap:wrap;">
+            ${bankInfo.name ? `<div><span style="color:var(--text-muted);font-size:0.78rem;">銀行名</span><div style="font-weight:600;margin-top:2px;">${bankInfo.name}</div></div>` : ''}
+            ${bankInfo.branch ? `<div><span style="color:var(--text-muted);font-size:0.78rem;">支店名</span><div style="font-weight:600;margin-top:2px;">${bankInfo.branch}</div></div>` : ''}
+            ${bankInfo.account ? `<div><span style="color:var(--text-muted);font-size:0.78rem;">口座番号</span><div style="font-weight:600;margin-top:2px;">${bankInfo.account}</div></div>` : ''}
+          </div>`;
+      } else {
+        bankWrap.style.display = 'none';
+      }
+    } else {
+      // ホスト：入力欄に既存値をセット
+      if (document.getElementById('bankName')) document.getElementById('bankName').value = bankInfo.name || '';
+      if (document.getElementById('bankBranch')) document.getElementById('bankBranch').value = bankInfo.branch || '';
+      if (document.getElementById('bankAccount')) document.getElementById('bankAccount').value = bankInfo.account || '';
+    }
 
     renderSettle(settleNames, settle.total || 0, settle.amounts || {}, settle.paid || {}, readOnly);
   }
@@ -1239,8 +1280,13 @@
     const total = parseInt(document.getElementById('totalAmount').value) || 0;
     const amounts = getCurrentAmounts();
     const paid = getCurrentPaid();
+    const bankInfo = {
+      name: document.getElementById('bankName')?.value.trim() || '',
+      branch: document.getElementById('bankBranch')?.value.trim() || '',
+      account: document.getElementById('bankAccount')?.value.trim() || '',
+    };
     await updateDoc(doc(db, 'events', eventId), {
-      settle: { total, amounts, paid },
+      settle: { total, amounts, paid, bankInfo },
       settlePublished: true
     });
     document.getElementById('publishedBadge').style.display = 'block';
