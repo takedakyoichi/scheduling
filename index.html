@@ -139,21 +139,20 @@
       pointer-events: none; white-space: nowrap;
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
-    .answer-form {
-      background: var(--green-light); border-radius: 10px;
-      padding: 16px; margin-bottom: 20px; border: 1px solid var(--green-mid);
+    /* 入力列（テーブル右端） */
+    th.input-col { background: linear-gradient(135deg, #3a7a5a, #1a5a3a); min-width: 100px; }
+    th.input-col input[type="text"] {
+      width: 100%; padding: 5px 8px; border-radius: 6px;
+      border: none; font-size: 0.82rem; background: rgba(255,255,255,0.92);
+      color: var(--text); outline: none;
     }
-    .answer-form-grid {
-      display: grid; grid-template-columns: 1fr 1fr;
-      gap: 10px; margin-bottom: 10px;
+    td.input-col { background: #f5fdf8; border-left: 2px solid var(--green-mid); text-align: center; }
+    .register-btn {
+      width: 100%; padding: 8px 4px; background: var(--green); color: white;
+      border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
+      cursor: pointer; transition: background 0.15s; white-space: nowrap;
     }
-    @media (max-width: 500px) { .answer-form-grid { grid-template-columns: 1fr; } }
-    .answer-form input { margin-bottom: 0; background: white; }
-    .vote-form-table { width: 100%; margin-top: 12px; border-collapse: collapse; font-size: 0.88rem; }
-    .vote-form-table td { padding: 6px 8px; border-bottom: 1px solid var(--green-mid); }
-    .vote-form-table td:first-child { font-weight: 600; color: var(--text); font-size: 0.85rem; white-space: nowrap; }
-    .vote-form-table tr:last-child td { border-bottom: none; }
-    .field-label { font-size: 0.78rem; font-weight: 600; color: var(--text-muted); margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.04em; }
+    .register-btn:hover { background: var(--green-dark); }
     .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 300px; }
     thead tr { background: linear-gradient(135deg, var(--green-dark), var(--green)); }
@@ -293,22 +292,6 @@
     <span id="viewTitle">出欠を回答する</span>
   </div>
 
-  <div class="answer-form">
-    <div class="answer-form-grid">
-      <div>
-        <div class="field-label">名前</div>
-        <input type="text" id="participantName" placeholder="山田 太郎">
-      </div>
-      <div>
-        <div class="field-label">備考（アレルギー等）</div>
-        <input type="text" id="participantNote" placeholder="例：魚介類アレルギー">
-      </div>
-    </div>
-    <div id="voteFormWrap"></div>
-    <button class="btn btn-primary" id="addParticipantBtn" style="width:100%;padding:12px;margin-top:12px;">
-      回答を登録する
-    </button>
-  </div>
 
   <div id="tableWrap"><p class="loading">読み込み中</p></div>
 
@@ -517,75 +500,14 @@
     document.getElementById('viewCard').style.display = 'block';
     const eventRef = doc(db, 'events', eventId);
 
-    let currentDates = [];
-
     onSnapshot(eventRef, (snap) => {
       if (!snap.exists()) {
         document.getElementById('tableWrap').innerHTML = '<p class="empty-msg">イベントが見つかりません</p>';
         return;
       }
       const data = snap.data();
-      currentDates = data.dates;
       document.getElementById('viewTitle').textContent = data.name;
-      renderVoteForm(data.dates);
       renderTable(data.dates, data.participants || {});
-    });
-
-    // 候補日ごとの◯△✕フォームを表示
-    function renderVoteForm(dates) {
-      const wrap = document.getElementById('voteFormWrap');
-      const rows = dates.map((d, i) => {
-        const dt = new Date(d + 'T00:00:00');
-        const day = dt.getDay();
-        const label = `${dt.getMonth()+1}/${dt.getDate()}(${WEEKS[day]})`;
-        const btns = [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key, lbl, cls]) =>
-          `<button type="button" class="vote-btn ${cls}" data-form-idx="${i}" data-key="${key}">${lbl}</button>`
-        ).join('');
-        return `<tr><td>${label}</td><td>${btns}</td></tr>`;
-      }).join('');
-      wrap.innerHTML = `<table class="vote-form-table"><tbody>${rows}</tbody></table>`;
-
-      // フォーム内の投票ボタン選択
-      wrap.querySelectorAll('.vote-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          const idx = btn.dataset.formIdx;
-          wrap.querySelectorAll(`.vote-btn[data-form-idx="${idx}"]`).forEach(b => b.classList.remove('selected'));
-          btn.classList.add('selected');
-        });
-      });
-    }
-
-    document.getElementById('addParticipantBtn').addEventListener('click', async () => {
-      const rawName = document.getElementById('participantName').value.trim();
-      if (!rawName) { showToast('⚠️ 名前を入力してください'); return; }
-      const snap = await getDoc(eventRef);
-      const data = snap.data();
-      const existing = data.participants || {};
-      const normalizedNew = normalizeName(rawName);
-      const isDuplicate = Object.keys(existing).some(n => normalizeName(n) === normalizedNew);
-      if (isDuplicate) { showToast('⚠️ 同じ名前が既に登録されています'); return; }
-      const note = document.getElementById('participantNote').value.trim();
-      // 全候補日が選択されているか確認
-      const unselected = currentDates.findIndex((_, i) =>
-        !document.querySelector(`.vote-btn[data-form-idx="${i}"].selected`)
-      );
-      if (unselected !== -1) {
-        const dt = new Date(currentDates[unselected] + 'T00:00:00');
-        showToast(`⚠️ ${dt.getMonth()+1}/${dt.getDate()} の回答を選択してください`);
-        return;
-      }
-      // フォームから各日の回答を収集
-      const votes = { _note: note, _joinedAt: Date.now() };
-      currentDates.forEach((_, i) => {
-        const selected = document.querySelector(`.vote-btn[data-form-idx="${i}"].selected`);
-        votes[i] = selected ? selected.dataset.key : '';
-      });
-      await updateDoc(eventRef, { [`participants.${rawName}`]: votes });
-      document.getElementById('participantName').value = '';
-      document.getElementById('participantNote').value = '';
-      // フォームの選択状態をリセット
-      document.querySelectorAll('#voteFormWrap .vote-btn').forEach(b => b.classList.remove('selected'));
-      showToast(`✅ ${rawName} さんの回答を登録しました`);
     });
   }
 
@@ -598,13 +520,17 @@
   }
 
   function buildNameHeaders(entries) {
-    return entries.map(([name]) =>
+    const existing = entries.map(([name]) =>
       `<th class="participant-th" data-col="${name}">
         ${name}<br>
         <button class="edit-btn" data-name="${name}">✏️ 変更・削除</button><br>
         <button class="del-btn" data-name="${name}">🗑 削除する</button>
        </th>`
     ).join('');
+    const inputCol = `<th class="input-col">
+      <input type="text" id="newName" placeholder="名前を入力">
+    </th>`;
+    return existing + inputCol;
   }
 
   function buildDateRows(dates, entries, counts) {
@@ -616,10 +542,16 @@
       const isBest = counts[i] === maxCount && maxCount > 0;
       const cells = entries.map(([name, votes]) => buildVoteCell(name, i, votes[i] || '')).join('');
       const countStr = Number.isInteger(counts[i]) ? counts[i] : counts[i].toFixed(1);
+      const inputCell = `<td class="input-col">
+        ${[['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,lbl,cls]) =>
+          `<button class="vote-btn ${cls}" data-new-idx="${i}" data-key="${key}">${lbl}</button>`
+        ).join('')}
+      </td>`;
       return `<tr>
         <td class="date-cell${isBest?' is-best':''}">${dateLabel}</td>
         ${cells}
         <td class="point-cell${isBest?' is-best':''}">${countStr}</td>
+        ${inputCell}
       </tr>`;
     }).join('');
   }
@@ -636,17 +568,28 @@
       const noteVal = (votes._note || '').replace(/"/g,'&quot;');
       return `<td class="locked" data-col="${name}"><input type="text" class="note-input" data-name="${name}" value="${noteVal}" placeholder="備考を追加..."></td>`;
     }).join('');
-    return `<tr class="note-row"><td class="date-cell note-label">備考</td>${cells}<td></td></tr>`;
+    const inputCell = `<td class="input-col">
+      <input type="text" id="newNote" placeholder="備考（任意）" style="width:100%;padding:5px 8px;border:1.5px solid var(--green-mid);border-radius:6px;font-size:0.82rem;outline:none;">
+    </td>`;
+    return `<tr class="note-row"><td class="date-cell note-label">備考</td>${cells}<td></td>${inputCell}</tr>`;
   }
 
   function attachVoteHandlers(wrap) {
-    // 編集モード中のみUI上の選択状態を変更（Firebaseへは保存しない）
-    wrap.querySelectorAll('.vote-btn').forEach(btn => {
+    // 既存参加者：編集モード中のみUI上の選択状態を変更
+    wrap.querySelectorAll('.vote-btn[data-name]').forEach(btn => {
       btn.addEventListener('click', () => {
         const name = btn.dataset.name;
         const idx = btn.dataset.idx;
-        // 同じ参加者・同じ日付の他ボタンの選択を外す
         wrap.querySelectorAll(`.vote-btn[data-name="${name}"][data-idx="${idx}"]`)
+          .forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      });
+    });
+    // 入力列：新規回答の選択
+    wrap.querySelectorAll('.vote-btn[data-new-idx]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const idx = btn.dataset.newIdx;
+        wrap.querySelectorAll(`.vote-btn[data-new-idx="${idx}"]`)
           .forEach(b => b.classList.remove('selected'));
         btn.classList.add('selected');
       });
@@ -711,13 +654,17 @@
   function renderTable(dates, participants) {
     const wrap = document.getElementById('tableWrap');
     const entries = Object.entries(participants);
-    if (entries.length === 0) {
-      wrap.innerHTML = '<p class="empty-msg">まだ回答がありません</p>';
-      return;
-    }
 
     entries.sort((a, b) => (a[1]._joinedAt || 0) - (b[1]._joinedAt || 0));
     const counts = calcCounts(dates, entries);
+    const colSpan = entries.length + 3; // 日付列 + 参加者列 + Pt列 + 入力列
+
+    const registerRow = `<tr>
+      <td colspan="${colSpan - 1}"></td>
+      <td class="input-col">
+        <button class="register-btn" id="registerBtn">登録する</button>
+      </td>
+    </tr>`;
 
     wrap.innerHTML = `
       <div class="table-wrap">
@@ -730,6 +677,7 @@
           <tbody>
             ${buildDateRows(dates, entries, counts)}
             ${buildNoteRow(entries)}
+            ${registerRow}
           </tbody>
         </table>
       </div>`;
@@ -737,6 +685,38 @@
     attachVoteHandlers(wrap);
     attachNoteHandlers(wrap);
     attachDeleteHandlers(wrap, dates);
+
+    // 登録ボタン
+    const registerBtn = wrap.querySelector('#registerBtn');
+    if (registerBtn) {
+      registerBtn.addEventListener('click', async () => {
+        const rawName = (wrap.querySelector('#newName')?.value || '').trim();
+        if (!rawName) { showToast('⚠️ 名前を入力してください'); return; }
+        const snap = await getDoc(doc(db, 'events', eventId));
+        const data = snap.data();
+        const existing = data.participants || {};
+        if (Object.keys(existing).some(n => normalizeName(n) === normalizeName(rawName))) {
+          showToast('⚠️ 同じ名前が既に登録されています'); return;
+        }
+        // 全候補日の選択チェック
+        const unselected = dates.findIndex((_, i) =>
+          !wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`)
+        );
+        if (unselected !== -1) {
+          const dt = new Date(dates[unselected] + 'T00:00:00');
+          showToast(`⚠️ ${dt.getMonth()+1}/${dt.getDate()} の回答を選択してください`);
+          return;
+        }
+        const note = (wrap.querySelector('#newNote')?.value || '').trim();
+        const votes = { _note: note, _joinedAt: Date.now() };
+        dates.forEach((_, i) => {
+          const sel = wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`);
+          votes[i] = sel ? sel.dataset.key : '';
+        });
+        await updateDoc(doc(db, 'events', eventId), { [`participants.${rawName}`]: votes });
+        showToast(`✅ ${rawName} さんの回答を登録しました`);
+      });
+    }
   }
 </script>
 </body>
