@@ -1290,11 +1290,20 @@
     }, 0);
     const diff = collected - total;
 
+    const matchBanner = diff === 0 && total > 0
+      ? `<div id="settleMatchBanner" style="background:#e8f5ee;border:1.5px solid var(--green-mid);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-weight:600;color:var(--green);">✅ 個人合計と合計金額が一致しています（¥${total.toLocaleString()}）</div>`
+      : `<div id="settleMatchBanner" style="background:#fff0f0;border:1.5px solid #f5c0c0;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-weight:600;color:#c0392b;">⚠️ 個人合計（¥${collected.toLocaleString()}）と合計金額（¥${total.toLocaleString()}）が${diff > 0 ? `¥${diff.toLocaleString()} 超過` : `¥${Math.abs(diff).toLocaleString()} 不足`}しています</div>`;
+
     result.innerHTML = `
+      ${matchBanner}
       <div class="settle-summary">
         <div class="settle-summary-item">
           <div class="val">¥${total.toLocaleString()}</div>
           <div class="lbl">合計金額</div>
+        </div>
+        <div class="settle-summary-item">
+          <div class="val">¥${collected.toLocaleString()}</div>
+          <div class="lbl">個人合計</div>
         </div>
         <div class="settle-summary-item">
           <div class="val">${count}人</div>
@@ -1303,12 +1312,6 @@
         <div class="settle-summary-item">
           <div class="val">¥${perPerson.toLocaleString()}</div>
           <div class="lbl">均等割り（1人）</div>
-        </div>
-        <div class="settle-summary-item">
-          <div class="val ${diff > 0 ? 'over' : diff < 0 ? 'under' : ''}" style="color:${diff > 0 ? '#c0392b' : diff < 0 ? '#007a3d' : 'var(--green)'}">
-            ${diff === 0 ? '± ¥0' : diff > 0 ? '+¥' + diff.toLocaleString() : '-¥' + Math.abs(diff).toLocaleString()}
-          </div>
-          <div class="lbl">端数（集計額 − 合計）</div>
         </div>
       </div>
       <table class="settle-table">
@@ -1323,7 +1326,7 @@
       ${readOnly ? '' : '<button class="btn btn-secondary" id="resetAmountsBtn" style="width:100%;">🔄 均等割りに戻す</button>'}
     `;
 
-    // 差額の更新関数
+    // 差額・一致バナーの更新関数
     function updateDiffs() {
       names.forEach(name => {
         const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
@@ -1334,6 +1337,23 @@
         diffEl.textContent = d === 0 ? '±0' : d > 0 ? `+¥${d.toLocaleString()}` : `-¥${Math.abs(d).toLocaleString()}`;
         diffEl.className = 'settle-diff' + (d > 0 ? ' over' : d < 0 ? ' under' : '');
       });
+      // 個人合計と合計金額の一致チェックを更新
+      const currentTotal = parseInt(document.getElementById('totalAmount')?.value) || total;
+      const currentCollected = names.reduce((sum, name) => {
+        const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
+        return sum + (input ? (parseInt(input.value) || 0) : (savedAmounts[name] || perPerson));
+      }, 0);
+      const currentDiff = currentCollected - currentTotal;
+      const banner = result.querySelector('#settleMatchBanner');
+      if (banner) {
+        if (currentDiff === 0 && currentTotal > 0) {
+          banner.style.cssText = 'background:#e8f5ee;border:1.5px solid var(--green-mid);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-weight:600;color:var(--green);';
+          banner.textContent = `✅ 個人合計と合計金額が一致しています（¥${currentTotal.toLocaleString()}）`;
+        } else {
+          banner.style.cssText = 'background:#fff0f0;border:1.5px solid #f5c0c0;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-weight:600;color:#c0392b;';
+          banner.textContent = `⚠️ 個人合計（¥${currentCollected.toLocaleString()}）と合計金額（¥${currentTotal.toLocaleString()}）が${currentDiff > 0 ? `¥${currentDiff.toLocaleString()} 超過` : `¥${Math.abs(currentDiff).toLocaleString()} 不足`}しています`;
+        }
+      }
     }
     updateDiffs();
 
