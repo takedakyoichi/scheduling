@@ -1260,7 +1260,14 @@
     const result = document.getElementById('settleResult');
     if (count === 0) { result.innerHTML = '<p class="empty-msg">参加者がいません</p>'; return; }
 
-    const rows = names.map(name => {
+    // 金額の高い順にソート
+    const sortedNames = [...names].sort((a, b) => {
+      const va = savedAmounts[a] !== undefined ? savedAmounts[a] : perPerson;
+      const vb = savedAmounts[b] !== undefined ? savedAmounts[b] : perPerson;
+      return vb - va;
+    });
+
+    const rows = sortedNames.map(name => {
       const amount = savedAmounts[name] !== undefined ? savedAmounts[name] : perPerson;
       const isPaid = savedPaid[name] || false;
       if (readOnly) {
@@ -1332,7 +1339,7 @@
 
     // 差額・一致バナーの更新関数
     function updateDiffs() {
-      names.forEach(name => {
+      sortedNames.forEach(name => {
         const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
         const diffEl = result.querySelector(`#diff-${CSS.escape(name)}`);
         if (!diffEl) return;
@@ -1343,7 +1350,7 @@
       });
       // 個人合計と合計金額の一致チェックを更新
       const currentTotal = parseInt(document.getElementById('totalAmount')?.value) || total;
-      const currentCollected = names.reduce((sum, name) => {
+      const currentCollected = sortedNames.reduce((sum, name) => {
         const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
         return sum + (input ? (parseInt(input.value) || 0) : (savedAmounts[name] || perPerson));
       }, 0);
