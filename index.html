@@ -293,6 +293,11 @@
     </div>
   </div>
 
+  <div class="field">
+    <label>メモ（出欠締め切り・場所・その他連絡事項など）</label>
+    <textarea id="eventMemo" placeholder="例：出欠締め切り6月15日、場所は新橋駅周辺を予定" rows="3" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;outline:none;color:var(--text);resize:vertical;background:#fafafa;font-family:inherit;"></textarea>
+  </div>
+
   <button class="btn btn-primary btn-full" id="createBtn" style="padding:14px;">
     🔗 イベントを作成してリンクを発行
   </button>
@@ -314,6 +319,9 @@
   </div>
 
 
+  <div id="memoWrap" style="display:none;background:var(--green-light);border:1px solid var(--green-mid);border-radius:6px;padding:12px 16px;margin-bottom:16px;font-size:0.88rem;color:var(--text);line-height:1.6;">
+    <span style="font-weight:600;color:var(--green);margin-right:8px;">📋 メモ</span><span id="eventMemoView"></span>
+  </div>
   <div id="tableWrap"><p class="loading">読み込み中</p></div>
 
   <div class="legend">
@@ -494,8 +502,9 @@
     const btn = document.getElementById('createBtn');
     btn.textContent = '作成中...';
     btn.disabled = true;
+    const memo = document.getElementById('eventMemo').value.trim();
     const eventId = Math.random().toString(36).slice(2, 10);
-    await setDoc(doc(db, 'events', eventId), { name, dates, participants: {} });
+    await setDoc(doc(db, 'events', eventId), { name, dates, memo, participants: {} });
     const url = `${location.origin}${location.pathname}?event=${eventId}`;
     document.getElementById('shareUrl').value = url;
     document.getElementById('shareBox').style.display = 'block';
@@ -528,6 +537,14 @@
       }
       const data = snap.data();
       document.getElementById('viewTitle').textContent = data.name;
+      // メモ表示
+      const memoEl = document.getElementById('eventMemoView');
+      if (data.memo) {
+        memoEl.textContent = data.memo;
+        memoEl.parentElement.style.display = 'block';
+      } else {
+        memoEl.parentElement.style.display = 'none';
+      }
       renderTable(data.dates, data.participants || {});
     });
   }
