@@ -261,6 +261,33 @@
     .empty-msg, .loading { text-align: center; color: #bbb; padding: 40px; font-size: 0.9rem; }
     .loading::before { content: '⏳ '; }
     #viewCard { display: none; }
+    /* 精算ページ */
+    .settle-summary {
+      background: var(--green-light); border: 1px solid var(--green-mid);
+      border-radius: 8px; padding: 16px; margin-bottom: 20px;
+      display: flex; gap: 24px; flex-wrap: wrap;
+    }
+    .settle-summary-item { text-align: center; }
+    .settle-summary-item .val { font-size: 1.4rem; font-weight: 700; color: var(--green); }
+    .settle-summary-item .lbl { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+    .settle-table { width: 100%; border-collapse: collapse; margin-bottom: 16px; }
+    .settle-table th { background: var(--green); color: white; padding: 10px 12px; font-size: 0.85rem; text-align: left; }
+    .settle-table td { padding: 10px 12px; border-bottom: 1px solid #f0f0f0; font-size: 0.9rem; vertical-align: middle; }
+    .settle-table tr:last-child td { border-bottom: none; }
+    .settle-table tbody tr:hover { background: #f9fafb; }
+    .settle-amount-input {
+      width: 120px; padding: 6px 10px; border: 1.5px solid var(--border);
+      border-radius: 6px; font-size: 0.9rem; outline: none; text-align: right;
+    }
+    .settle-amount-input:focus { border-color: var(--green); }
+    .settle-paid { display: flex; align-items: center; gap: 6px; }
+    .settle-paid input[type=checkbox] { width: 16px; height: 16px; accent-color: var(--green); cursor: pointer; }
+    .settle-paid label { font-size: 0.85rem; cursor: pointer; }
+    tr.paid td { opacity: 0.45; text-decoration: line-through; }
+    tr.paid td:last-child { opacity: 1; text-decoration: none; }
+    .settle-diff { font-size: 0.8rem; }
+    .settle-diff.over { color: #c0392b; }
+    .settle-diff.under { color: #007a3d; }
   </style>
 </head>
 <body>
@@ -396,6 +423,33 @@
     <div class="legend-item"><span style="color:#c0392b;font-size:1rem;">✕</span> 参加できない（0pt）</div>
     <div class="legend-item"><span style="color:var(--gold);">★</span> 最高得点日</div>
   </div>
+
+  <!-- ホスト専用：精算ボタン -->
+  <div class="host-only" style="display:none;margin-top:20px;padding-top:16px;border-top:1px solid var(--border);">
+    <button class="btn btn-primary" id="goSettleBtn" style="width:100%;padding:14px;font-size:1rem;">
+      💰 会が終了したので精算に進む
+    </button>
+  </div>
+</div>
+
+<!-- 精算カード -->
+<div class="card" id="settleCard" style="display:none;">
+  <div class="card-title" style="justify-content:space-between;">
+    <div style="display:flex;align-items:center;gap:8px;">
+      <div class="icon">💰</div>
+      <span id="settleTitle">精算</span>
+    </div>
+    <button id="backToEventBtn" style="background:none;border:1px solid var(--border);border-radius:4px;padding:4px 12px;font-size:0.8rem;color:var(--text-muted);cursor:pointer;">← 回答画面に戻る</button>
+  </div>
+
+  <!-- 合計金額入力 -->
+  <div class="field">
+    <label>合計金額（円）</label>
+    <input type="number" id="totalAmount" placeholder="例：25000" min="0" style="font-size:1.1rem;">
+  </div>
+
+  <!-- 精算結果 -->
+  <div id="settleResult"></div>
 </div>
 
 </div>
@@ -1018,6 +1072,141 @@
         showToast(`✅ ${rawName} さんの回答を登録しました`);
       });
     }
+  }
+
+  // ── 精算機能 ──────────────────────────────────
+
+  let settleNames = [];
+
+  document.getElementById('goSettleBtn')?.addEventListener('click', async () => {
+    const snap = await getDoc(doc(db, 'events', eventId));
+    const data = snap.data();
+    const participants = data.participants || {};
+    // 並び順を適用
+    const order = data.participantOrder || [];
+    settleNames = Object.keys(participants).sort((a, b) => {
+      const ai = order.indexOf(a), bi = order.indexOf(b);
+      if (ai === -1 && bi === -1) return (participants[a]._joinedAt||0) - (participants[b]._joinedAt||0);
+      if (ai === -1) return 1; if (bi === -1) return -1;
+      return ai - bi;
+    });
+    document.getElementById('settleTitle').textContent = (data.name || 'イベント') + ' 精算';
+    document.getElementById('viewCard').style.display = 'none';
+    document.getElementById('settleCard').style.display = 'block';
+    document.getElementById('totalAmount').value = '';
+    renderSettle(settleNames, 0);
+  });
+
+  document.getElementById('backToEventBtn')?.addEventListener('click', () => {
+    document.getElementById('settleCard').style.display = 'none';
+    document.getElementById('viewCard').style.display = 'block';
+  });
+
+  document.getElementById('totalAmount')?.addEventListener('input', () => {
+    const total = parseInt(document.getElementById('totalAmount').value) || 0;
+    renderSettle(settleNames, total);
+  });
+
+  function renderSettle(names, total) {
+    const count = names.length;
+    const perPerson = count > 0 ? Math.ceil(total / count) : 0;
+    const result = document.getElementById('settleResult');
+    if (count === 0) { result.innerHTML = '<p class="empty-msg">参加者がいません</p>'; return; }
+
+    // 各人の金額（初期は均等）
+    const prevAmounts = {};
+    result.querySelectorAll('.settle-amount-input').forEach(el => {
+      prevAmounts[el.dataset.name] = parseInt(el.value) || 0;
+    });
+
+    const rows = names.map(name => {
+      const amount = prevAmounts[name] !== undefined ? prevAmounts[name] : perPerson;
+      return `<tr id="row-${CSS.escape(name)}">
+        <td style="font-weight:600;">${name}</td>
+        <td><input type="number" class="settle-amount-input" data-name="${name}" value="${amount}" min="0"></td>
+        <td class="settle-diff" id="diff-${CSS.escape(name)}"></td>
+        <td>
+          <div class="settle-paid">
+            <input type="checkbox" id="paid-${CSS.escape(name)}" class="paid-check" data-name="${name}">
+            <label for="paid-${CSS.escape(name)}">支払済み</label>
+          </div>
+        </td>
+      </tr>`;
+    }).join('');
+
+    const collected = names.reduce((sum, name) => {
+      const v = prevAmounts[name] !== undefined ? prevAmounts[name] : perPerson;
+      return sum + v;
+    }, 0);
+    const diff = collected - total;
+
+    result.innerHTML = `
+      <div class="settle-summary">
+        <div class="settle-summary-item">
+          <div class="val">¥${total.toLocaleString()}</div>
+          <div class="lbl">合計金額</div>
+        </div>
+        <div class="settle-summary-item">
+          <div class="val">${count}人</div>
+          <div class="lbl">参加人数</div>
+        </div>
+        <div class="settle-summary-item">
+          <div class="val">¥${perPerson.toLocaleString()}</div>
+          <div class="lbl">均等割り（1人）</div>
+        </div>
+        <div class="settle-summary-item">
+          <div class="val ${diff > 0 ? 'over' : diff < 0 ? 'under' : ''}" style="color:${diff > 0 ? '#c0392b' : diff < 0 ? '#007a3d' : 'var(--green)'}">
+            ${diff === 0 ? '± ¥0' : diff > 0 ? '+¥' + diff.toLocaleString() : '-¥' + Math.abs(diff).toLocaleString()}
+          </div>
+          <div class="lbl">端数（集計額 − 合計）</div>
+        </div>
+      </div>
+      <table class="settle-table">
+        <thead><tr>
+          <th>名前</th>
+          <th>金額（円）</th>
+          <th>均等との差</th>
+          <th>状態</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+      </table>
+      <button class="btn btn-secondary" id="resetAmountsBtn" style="width:100%;">🔄 均等割りに戻す</button>
+    `;
+
+    // 差額の更新関数
+    function updateDiffs() {
+      names.forEach(name => {
+        const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
+        const diffEl = result.querySelector(`#diff-${CSS.escape(name)}`);
+        if (!input || !diffEl) return;
+        const v = parseInt(input.value) || 0;
+        const d = v - perPerson;
+        diffEl.textContent = d === 0 ? '±0' : d > 0 ? `+¥${d.toLocaleString()}` : `-¥${Math.abs(d).toLocaleString()}`;
+        diffEl.className = 'settle-diff' + (d > 0 ? ' over' : d < 0 ? ' under' : '');
+      });
+    }
+    updateDiffs();
+
+    // 金額入力イベント
+    result.querySelectorAll('.settle-amount-input').forEach(input => {
+      input.addEventListener('input', updateDiffs);
+    });
+
+    // 支払済みチェック
+    result.querySelectorAll('.paid-check').forEach(cb => {
+      cb.addEventListener('change', () => {
+        const row = result.querySelector(`#row-${CSS.escape(cb.dataset.name)}`);
+        if (row) row.classList.toggle('paid', cb.checked);
+      });
+    });
+
+    // 均等割りに戻す
+    result.querySelector('#resetAmountsBtn')?.addEventListener('click', () => {
+      result.querySelectorAll('.settle-amount-input').forEach(input => {
+        input.value = perPerson;
+      });
+      updateDiffs();
+    });
   }
 </script>
 </body>
