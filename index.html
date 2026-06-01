@@ -286,9 +286,11 @@
 
   <div class="field">
     <label>候補日</label>
-    <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <input type="checkbox" id="useTime" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer;">
       <label for="useTime" style="font-size:0.88rem;color:var(--text-muted);cursor:pointer;text-transform:none;letter-spacing:0;margin:0;">日付に時刻を追加する</label>
+      <input type="time" id="defaultTime" style="display:none;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;outline:none;background:#fafafa;accent-color:var(--green);">
+      <span id="defaultTimeHint" style="display:none;font-size:0.78rem;color:var(--text-muted);">← 全候補日に一括適用（個別変更も可）</span>
     </div>
     <div id="dateList"></div>
     <div class="btn-row" style="margin-top:8px">
@@ -448,8 +450,9 @@
     timeInput.type = 'time';
     timeInput.className = 'time-input';
     timeInput.style.cssText = 'width:110px;padding:10px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;outline:none;background:#fafafa;';
-    if (time) timeInput.value = time;
-    timeInput.style.display = document.getElementById('useTime').checked ? 'block' : 'none';
+    const defaultTimeVal = document.getElementById('defaultTime').value;
+    timeInput.value = time || defaultTimeVal || '';
+    timeInput.style.display = document.getElementById('useTime').checked ? 'inline-block' : 'none';
 
     const btn = document.createElement('button');
     btn.className = 'btn-remove';
@@ -465,9 +468,21 @@
 
   // チェックボックスの変更で時刻欄を表示/非表示
   document.getElementById('useTime').addEventListener('change', (e) => {
+    const checked = e.target.checked;
+    const defaultTimeEl = document.getElementById('defaultTime');
+    const hintEl = document.getElementById('defaultTimeHint');
+    defaultTimeEl.style.display = checked ? 'inline-block' : 'none';
+    hintEl.style.display = checked ? 'inline' : 'none';
     document.querySelectorAll('.time-input').forEach(el => {
-      el.style.display = e.target.checked ? 'block' : 'none';
-      if (!e.target.checked) el.value = '';
+      el.style.display = checked ? 'inline-block' : 'none';
+      if (!checked) el.value = '';
+    });
+  });
+
+  // 一括時刻を全候補日に適用
+  document.getElementById('defaultTime').addEventListener('change', (e) => {
+    document.querySelectorAll('.time-input').forEach(el => {
+      el.value = e.target.value;
     });
   });
 
