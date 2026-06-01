@@ -640,40 +640,45 @@
   }
 
   function attachVoteHandlers(wrap) {
-    const debouncedUpdate = debounce(async (name, idx, key) => {
-      await updateDoc(doc(db, 'events', eventId), {
-        [`participants.${name}.${idx}`]: key
-      });
-    }, 500);
-
+    // 編集モード中のみUI上の選択状態を変更（Firebaseへは保存しない）
     wrap.querySelectorAll('.vote-btn').forEach(btn => {
       btn.addEventListener('click', () => {
-        debouncedUpdate(btn.dataset.name, btn.dataset.idx, btn.dataset.key);
+        const name = btn.dataset.name;
+        const idx = btn.dataset.idx;
+        // 同じ参加者・同じ日付の他ボタンの選択を外す
+        wrap.querySelectorAll(`.vote-btn[data-name="${name}"][data-idx="${idx}"]`)
+          .forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
       });
     });
   }
 
   function attachNoteHandlers(wrap) {
-    wrap.querySelectorAll('.note-input').forEach(input => {
-      input.addEventListener('change', async () => {
-        await updateDoc(doc(db, 'events', eventId), {
-          [`participants.${input.dataset.name}._note`]: input.value.trim()
-        });
-        showToast('💾 備考を保存しました');
-      });
-    });
+    // 備考は編集モード中のみ入力可（ロック解除はattachDeleteHandlersで管理）
+    // 保存は完了ボタン押下時にまとめて行う
   }
 
-  function attachDeleteHandlers(wrap) {
+  function attachDeleteHandlers(wrap, dates) {
     // 変更・削除ボタン：編集モードのトグル
     wrap.querySelectorAll('.edit-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
+      btn.addEventListener('click', async () => {
         const name = btn.dataset.name;
         const isEditing = btn.classList.contains('editing');
         const cells = wrap.querySelectorAll(`td[data-col="${name}"]`);
         const delBtn = wrap.querySelector(`.del-btn[data-name="${name}"]`);
+
         if (isEditing) {
-          // 編集モード終了
+          // 完了：現在のUI状態をFirebaseに一括保存
+          const updates = {};
+          dates.forEach((_, i) => {
+            const selected = wrap.querySelector(`.vote-btn[data-name="${name}"][data-idx="${i}"].selected`);
+            if (selected) updates[`participants.${name}.${i}`] = selected.dataset.key;
+          });
+          const noteInput = wrap.querySelector(`.note-input[data-name="${name}"]`);
+          if (noteInput) updates[`participants.${name}._note`] = noteInput.value.trim();
+          if (Object.keys(updates).length > 0) {
+            await updateDoc(doc(db, 'events', eventId), updates);
+          }
           btn.classList.remove('editing');
           btn.textContent = '✏️ 変更・削除';
           cells.forEach(td => td.classList.add('locked'));
@@ -731,7 +736,7 @@
 
     attachVoteHandlers(wrap);
     attachNoteHandlers(wrap);
-    attachDeleteHandlers(wrap);
+    attachDeleteHandlers(wrap, dates);
   }
 </script>
 </body>
