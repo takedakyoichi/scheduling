@@ -281,6 +281,8 @@
     <div class="radio-group">
       <div class="radio-chip"><input type="radio" name="daytype" id="dt1" value="weekday"><label for="dt1">平日のみ（祝日除く）</label></div>
       <div class="radio-chip"><input type="radio" name="daytype" id="dt2" value="all"><label for="dt2">土日祝を含む</label></div>
+      <div class="radio-chip"><input type="radio" name="daytype" id="dt3" value="friday"><label for="dt3">金曜のみ（祝日除く）</label></div>
+      <div class="radio-chip"><input type="radio" name="daytype" id="dt4" value="weekend"><label for="dt4">土日祝のみ</label></div>
     </div>
   </div>
 
@@ -517,7 +519,7 @@
     const weeksEl = document.querySelector('input[name="weeks"]:checked');
     const daytypeEl = document.querySelector('input[name="daytype"]:checked');
     const weeks = parseInt(weeksEl.value);
-    const weekdayOnly = daytypeEl.value === 'weekday';
+    const daytype = daytypeEl.value;
     document.getElementById('dateList').innerHTML = '';
     const current = new Date(startVal + 'T00:00:00');
     const end = new Date(startVal + 'T00:00:00');
@@ -525,7 +527,12 @@
     while (current < end) {
       const dateStr = toDateStr(current);
       const day = current.getDay();
-      const skip = weekdayOnly && (day === 0 || day === 6 || HOLIDAYS[dateStr]);
+      const isHoliday = !!HOLIDAYS[dateStr];
+      let skip = false;
+      if (daytype === 'weekday') skip = day === 0 || day === 6 || isHoliday;
+      else if (daytype === 'friday') skip = day !== 5 || isHoliday;
+      else if (daytype === 'weekend') skip = !(day === 0 || day === 6 || isHoliday);
+      // 'all' はスキップなし
       if (!skip) addDateRow(dateStr);
       current.setDate(current.getDate() + 1);
     }
