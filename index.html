@@ -286,6 +286,10 @@
 
   <div class="field">
     <label>候補日</label>
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;">
+      <input type="checkbox" id="useTime" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer;">
+      <label for="useTime" style="font-size:0.88rem;color:var(--text-muted);cursor:pointer;text-transform:none;letter-spacing:0;margin:0;">日付に時刻を追加する</label>
+    </div>
     <div id="dateList"></div>
     <div class="btn-row" style="margin-top:8px">
       <button class="btn btn-secondary" id="autoFillBtn" disabled style="opacity:0.4;cursor:not-allowed;">⚡ 自動入力</button>
@@ -417,9 +421,10 @@
 
   // ── 候補日UI ────────────────────────────────
 
-  function addDateRow(value) {
+  function addDateRow(value, time) {
     const row = document.createElement('div');
     row.className = 'date-row';
+
     const input = document.createElement('input');
     input.type = 'date';
     if (value) input.value = value;
@@ -438,6 +443,14 @@
     input.addEventListener('input', updateBadge);
     updateBadge();
 
+    // 時刻入力欄
+    const timeInput = document.createElement('input');
+    timeInput.type = 'time';
+    timeInput.className = 'time-input';
+    timeInput.style.cssText = 'width:110px;padding:10px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;outline:none;background:#fafafa;';
+    if (time) timeInput.value = time;
+    timeInput.style.display = document.getElementById('useTime').checked ? 'block' : 'none';
+
     const btn = document.createElement('button');
     btn.className = 'btn-remove';
     btn.textContent = '✕';
@@ -445,13 +458,27 @@
 
     row.appendChild(input);
     row.appendChild(badge);
+    row.appendChild(timeInput);
     row.appendChild(btn);
     document.getElementById('dateList').appendChild(row);
   }
 
+  // チェックボックスの変更で時刻欄を表示/非表示
+  document.getElementById('useTime').addEventListener('change', (e) => {
+    document.querySelectorAll('.time-input').forEach(el => {
+      el.style.display = e.target.checked ? 'block' : 'none';
+      if (!e.target.checked) el.value = '';
+    });
+  });
+
   function getDates() {
-    return Array.from(document.querySelectorAll('#dateList input[type=date]'))
-      .map(el => el.value).filter(d => d !== '');
+    const useTime = document.getElementById('useTime').checked;
+    return Array.from(document.querySelectorAll('#dateList .date-row')).map(row => {
+      const dateVal = row.querySelector('input[type=date]').value;
+      if (!dateVal) return null;
+      const timeVal = useTime ? (row.querySelector('input[type=time]').value || '') : '';
+      return timeVal ? `${dateVal} ${timeVal}` : dateVal;
+    }).filter(d => d !== null);
   }
 
   // 自動入力ボタンの有効化チェック
@@ -574,9 +601,10 @@
   function buildDateRows(dates, entries, counts) {
     const maxCount = Math.max(...counts, 0);
     return dates.map((d, i) => {
-      const dt = new Date(d + 'T00:00:00');
+      const [datePart, timePart] = d.split(' ');
+      const dt = new Date(datePart + 'T00:00:00');
       const day = dt.getDay();
-      const dateLabel = `${dt.getMonth()+1}/${dt.getDate()}(${WEEKS[day]})`;
+      const dateLabel = `${dt.getMonth()+1}/${dt.getDate()}(${WEEKS[day]})` + (timePart ? ` ${timePart}` : '');
       const isBest = counts[i] === maxCount && maxCount > 0;
       const cells = entries.map(([name, votes]) => buildVoteCell(name, i, votes[i] || '')).join('');
       const countStr = Number.isInteger(counts[i]) ? counts[i] : counts[i].toFixed(1);
