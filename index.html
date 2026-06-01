@@ -647,10 +647,17 @@
   }
 
   function buildVoteCell(name, idx, current) {
+    const colorMap = { o: '#007a3d', t: '#c8a84b', x: '#c0392b' };
+    const labelMap = { o: '◯', t: '△', x: '✕' };
+    // ロック時：選択済みの記号だけ表示
+    const display = current
+      ? `<span class="vote-display" style="color:${colorMap[current]};font-size:1.2rem;font-weight:700;">${labelMap[current]}</span>`
+      : `<span style="color:#ccc;font-size:0.8rem;">-</span>`;
+    // 編集時用の全ボタン（初期非表示）
     const btns = [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
-      `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}">${label}</button>`
+      `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}" style="display:none;">${label}</button>`
     ).join('');
-    return `<td class="locked" data-col="${name}">${btns}</td>`;
+    return `<td class="locked" data-col="${name}">${display}${btns}</td>`;
   }
 
   function buildNoteRow(entries) {
@@ -714,14 +721,29 @@
           }
           btn.classList.remove('editing');
           btn.textContent = '✏️ 変更・削除';
-          cells.forEach(td => td.classList.add('locked'));
+          cells.forEach(td => {
+            td.classList.add('locked');
+            // ボタンを隠して表示ラベルを出す
+            td.querySelectorAll('.vote-btn').forEach(b => b.style.display = 'none');
+            const colorMap = { o: '#007a3d', t: '#c8a84b', x: '#c0392b' };
+            const labelMap = { o: '◯', t: '△', x: '✕' };
+            const sel = td.querySelector('.vote-btn.selected');
+            let disp = td.querySelector('.vote-display');
+            if (!disp) { disp = document.createElement('span'); disp.className = 'vote-display'; td.insertBefore(disp, td.firstChild); }
+            if (sel) { disp.style.cssText = `color:${colorMap[sel.dataset.key]};font-size:1.2rem;font-weight:700;`; disp.textContent = labelMap[sel.dataset.key]; }
+            else { disp.style.cssText = 'color:#ccc;font-size:0.8rem;'; disp.textContent = '-'; }
+          });
           delBtn.classList.remove('visible');
           showToast('💾 変更を保存しました');
         } else {
-          // 編集モード開始
+          // 編集モード開始：表示ラベルを隠してボタンを出す
           btn.classList.add('editing');
           btn.textContent = '✅ 完了';
-          cells.forEach(td => td.classList.remove('locked'));
+          cells.forEach(td => {
+            td.classList.remove('locked');
+            td.querySelectorAll('.vote-display').forEach(el => el.style.display = 'none');
+            td.querySelectorAll('.vote-btn').forEach(b => b.style.display = 'inline-block');
+          });
           delBtn.classList.add('visible');
         }
       });
