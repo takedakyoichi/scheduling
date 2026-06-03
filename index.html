@@ -831,6 +831,20 @@
         const viewWrap = document.getElementById('viewSettleWrap');
         if (viewWrap) viewWrap.style.display = data.settlePublished ? 'block' : 'none';
       }
+
+      // 精算ページが開いていれば支払済み状態をリアルタイム同期
+      if (document.getElementById('settleCard').style.display !== 'none') {
+        const paid = data.settle?.paid || {};
+        document.querySelectorAll('.paid-check').forEach(cb => {
+          const name = cb.dataset.name;
+          if (!(name in paid)) return;
+          if (cb.checked !== paid[name]) {
+            cb.checked = paid[name];
+            const row = document.querySelector(`#row-${CSS.escape(name)}`);
+            if (row) row.classList.toggle('paid', paid[name]);
+          }
+        });
+      }
     });
 
     // ── ホスト専用：タイトル編集（インライン） ──
