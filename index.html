@@ -315,6 +315,20 @@
     .inline-edit-memo { width:100%; font-size:0.88rem; color:var(--text);
       border:1.5px solid var(--green); border-radius:4px; padding:6px 8px;
       outline:none; resize:vertical; font-family:inherit; line-height:1.6; background:white; }
+    /* 支店名オートコンプリート */
+    .branch-ac-wrap { position:relative; }
+    .branch-ac-list {
+      display:none; position:absolute; top:calc(100% + 2px); left:0; right:0;
+      background:white; border:1.5px solid var(--green); border-radius:8px;
+      box-shadow:0 4px 12px rgba(0,0,0,0.12); z-index:200;
+      max-height:200px; overflow-y:auto;
+    }
+    .branch-ac-item {
+      padding:9px 14px; cursor:pointer; font-size:0.88rem; color:var(--text);
+      border-bottom:1px solid #f0f0f0;
+    }
+    .branch-ac-item:last-child { border-bottom:none; }
+    .branch-ac-item:hover, .branch-ac-item.active { background:var(--green-light); color:var(--green); }
   </style>
 </head>
 <body>
@@ -524,7 +538,10 @@
       </div>
       <div>
         <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">支店名</div>
-        <input type="text" id="bankBranch" placeholder="例：本店営業部" style="margin-bottom:0;">
+        <div class="branch-ac-wrap">
+          <input type="text" id="bankBranch" placeholder="例：本店営業部" style="margin-bottom:0;" autocomplete="off">
+          <div class="branch-ac-list" id="branchAcList"></div>
+        </div>
       </div>
       <div>
         <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">口座番号</div>
@@ -1291,6 +1308,163 @@
     });
   }
 
+
+  // ── 支店名オートコンプリート ───────────────────────
+  const BRANCH_NAME_DATA = [
+    {n:'本店',               r:'ほんてん'},
+    {n:'本店営業部',          r:'ほんてんえいぎょうぶ'},
+    {n:'第一営業部',          r:'だいいちえいぎょうぶ'},
+    {n:'第二営業部',          r:'だいにえいぎょうぶ'},
+    {n:'東京営業部',          r:'とうきょうえいぎょうぶ'},
+    {n:'東京中央支店',        r:'とうきょうちゅうおうしてん'},
+    {n:'大阪営業部',          r:'おおさかえいぎょうぶ'},
+    {n:'大阪本店営業部',       r:'おおさかほんてんえいぎょうぶ'},
+    {n:'名古屋営業部',        r:'なごやえいぎょうぶ'},
+    {n:'横浜営業部',          r:'よこはまえいぎょうぶ'},
+    {n:'福岡営業部',          r:'ふくおかえいぎょうぶ'},
+    {n:'札幌営業部',          r:'さっぽろえいぎょうぶ'},
+    {n:'仙台営業部',          r:'せんだいえいぎょうぶ'},
+    {n:'広島営業部',          r:'ひろしまえいぎょうぶ'},
+    {n:'京都営業部',          r:'きょうとえいぎょうぶ'},
+    {n:'神戸営業部',          r:'こうべえいぎょうぶ'},
+    {n:'丸の内支店',          r:'まるのうちしてん'},
+    {n:'渋谷支店',            r:'しぶやしてん'},
+    {n:'新宿支店',            r:'しんじゅくしてん'},
+    {n:'池袋支店',            r:'いけぶくろしてん'},
+    {n:'上野支店',            r:'うえのしてん'},
+    {n:'品川支店',            r:'しながわしてん'},
+    {n:'銀座支店',            r:'ぎんざしてん'},
+    {n:'六本木支店',          r:'ろっぽんぎしてん'},
+    {n:'有楽町支店',          r:'ゆうらくちょうしてん'},
+    {n:'赤坂支店',            r:'あかさかしてん'},
+    {n:'目黒支店',            r:'めぐろしてん'},
+    {n:'世田谷支店',          r:'せたがやしてん'},
+    {n:'吉祥寺支店',          r:'きちじょうじしてん'},
+    {n:'立川支店',            r:'たちかわしてん'},
+    {n:'八王子支店',          r:'はちおうじしてん'},
+    {n:'横浜支店',            r:'よこはましてん'},
+    {n:'横浜駅前支店',        r:'よこはまえきまえしてん'},
+    {n:'川崎支店',            r:'かわさきしてん'},
+    {n:'藤沢支店',            r:'ふじさわしてん'},
+    {n:'相模原支店',          r:'さがみはらしてん'},
+    {n:'町田支店',            r:'まちだしてん'},
+    {n:'梅田支店',            r:'うめだしてん'},
+    {n:'難波支店',            r:'なんばしてん'},
+    {n:'天王寺支店',          r:'てんのうじしてん'},
+    {n:'淀屋橋支店',          r:'よどやばししてん'},
+    {n:'北浜支店',            r:'きたはましてん'},
+    {n:'船場支店',            r:'せんばしてん'},
+    {n:'心斎橋支店',          r:'しんさいばししてん'},
+    {n:'堺支店',              r:'さかいしてん'},
+    {n:'名古屋支店',          r:'なごやしてん'},
+    {n:'栄支店',              r:'さかえしてん'},
+    {n:'名駅支店',            r:'めいえきしてん'},
+    {n:'豊橋支店',            r:'とよはししてん'},
+    {n:'岡崎支店',            r:'おかざきしてん'},
+    {n:'京都支店',            r:'きょうとしてん'},
+    {n:'神戸支店',            r:'こうべしてん'},
+    {n:'姫路支店',            r:'ひめじしてん'},
+    {n:'奈良支店',            r:'ならしてん'},
+    {n:'和歌山支店',          r:'わかやましてん'},
+    {n:'尼崎支店',            r:'あまがさきしてん'},
+    {n:'福岡支店',            r:'ふくおかしてん'},
+    {n:'博多支店',            r:'はかたしてん'},
+    {n:'天神支店',            r:'てんじんしてん'},
+    {n:'小倉支店',            r:'こくらしてん'},
+    {n:'北九州支店',          r:'きたきゅうしゅうしてん'},
+    {n:'熊本支店',            r:'くまもとしてん'},
+    {n:'長崎支店',            r:'ながさきしてん'},
+    {n:'鹿児島支店',          r:'かごしましてん'},
+    {n:'大分支店',            r:'おおいたしてん'},
+    {n:'宮崎支店',            r:'みやざきしてん'},
+    {n:'佐賀支店',            r:'さがしてん'},
+    {n:'那覇支店',            r:'なはしてん'},
+    {n:'札幌支店',            r:'さっぽろしてん'},
+    {n:'仙台支店',            r:'せんだいしてん'},
+    {n:'青森支店',            r:'あおもりしてん'},
+    {n:'盛岡支店',            r:'もりおかしてん'},
+    {n:'秋田支店',            r:'あきたしてん'},
+    {n:'山形支店',            r:'やまがたしてん'},
+    {n:'福島支店',            r:'ふくしましてん'},
+    {n:'千葉支店',            r:'ちばしてん'},
+    {n:'船橋支店',            r:'ふなばししてん'},
+    {n:'柏支店',              r:'かしわしてん'},
+    {n:'松戸支店',            r:'まつどしてん'},
+    {n:'市川支店',            r:'いちかわしてん'},
+    {n:'大宮支店',            r:'おおみやしてん'},
+    {n:'浦和支店',            r:'うらわしてん'},
+    {n:'川口支店',            r:'かわぐちしてん'},
+    {n:'所沢支店',            r:'ところざわしてん'},
+    {n:'静岡支店',            r:'しずおかしてん'},
+    {n:'浜松支店',            r:'はままつしてん'},
+    {n:'新潟支店',            r:'にいがたしてん'},
+    {n:'金沢支店',            r:'かなざわしてん'},
+    {n:'富山支店',            r:'とやましてん'},
+    {n:'長野支店',            r:'ながのしてん'},
+    {n:'広島支店',            r:'ひろしましてん'},
+    {n:'岡山支店',            r:'おかやましてん'},
+    {n:'松山支店',            r:'まつやましてん'},
+    {n:'高松支店',            r:'たかまつしてん'},
+    {n:'高知支店',            r:'こうちしてん'},
+    {n:'徳島支店',            r:'とくしましてん'},
+  ];
+
+  (function initBranchAutocomplete() {
+    const input = document.getElementById('bankBranch');
+    const list  = document.getElementById('branchAcList');
+    if (!input || !list) return;
+
+    let activeIdx = -1;
+    let composing = false;
+    input.addEventListener('compositionstart', () => composing = true);
+    input.addEventListener('compositionend',   () => { composing = false; showList(); });
+
+    function showList() {
+      const val = input.value;
+      if (!val) { closeList(); return; }
+      const isHiragana = /[ぁ-ん]/.test(val);
+      const matches = BRANCH_NAME_DATA.filter(b =>
+        isHiragana ? b.r.startsWith(val) : b.n.includes(val)
+      ).slice(0, 12);
+      if (!matches.length) { closeList(); return; }
+      activeIdx = -1;
+      list.innerHTML = matches.map((b, i) =>
+        `<div class="branch-ac-item" data-idx="${i}" data-name="${b.n}">${b.n}</div>`
+      ).join('');
+      list.style.display = 'block';
+      list.querySelectorAll('.branch-ac-item').forEach(el => {
+        el.addEventListener('mousedown', e => {
+          e.preventDefault();
+          input.value = el.dataset.name;
+          closeList();
+        });
+      });
+    }
+
+    function closeList() { list.style.display = 'none'; activeIdx = -1; }
+
+    function moveActive(dir) {
+      const items = list.querySelectorAll('.branch-ac-item');
+      if (!items.length) return;
+      items[activeIdx]?.classList.remove('active');
+      activeIdx = (activeIdx + dir + items.length) % items.length;
+      items[activeIdx].classList.add('active');
+    }
+
+    input.addEventListener('input', () => { if (!composing) showList(); });
+    input.addEventListener('keydown', e => {
+      if (list.style.display === 'none') return;
+      if (e.key === 'ArrowDown')  { e.preventDefault(); moveActive(1); }
+      if (e.key === 'ArrowUp')    { e.preventDefault(); moveActive(-1); }
+      if (e.key === 'Enter' && activeIdx >= 0) {
+        e.preventDefault();
+        input.value = list.querySelectorAll('.branch-ac-item')[activeIdx].dataset.name;
+        closeList();
+      }
+      if (e.key === 'Escape') closeList();
+    });
+    input.addEventListener('blur', () => setTimeout(closeList, 150));
+  })();
 
   // ── 精算機能 ──────────────────────────────────
 
