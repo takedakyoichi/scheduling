@@ -1470,6 +1470,7 @@
 
   let settleNames = [];
   let settleReadOnly = false;
+  let amountsCustomized = false; // 金額を手動変更したか
 
   function getSortedNames(data) {
     const participants = data.participants || {};
@@ -1485,6 +1486,7 @@
   function openSettlePage(data, readOnly) {
     settleNames = getSortedNames(data);
     settleReadOnly = readOnly;
+    amountsCustomized = !!(data.settle?.amounts && Object.keys(data.settle.amounts).length);
     document.getElementById('settleTitle').textContent = (data.name || 'イベント') + ' 精算';
     document.getElementById('viewCard').style.display = 'none';
     document.getElementById('settleCard').style.display = 'block';
@@ -1554,7 +1556,8 @@
 
   document.getElementById('totalAmount')?.addEventListener('input', () => {
     const total = parseInt(document.getElementById('totalAmount').value) || 0;
-    const amounts = getCurrentAmounts();
+    // 手動変更前は {} を渡して均等割をデフォルト表示
+    const amounts = amountsCustomized ? getCurrentAmounts() : {};
     renderSettle(settleNames, total, amounts, getCurrentPaid(), false);
   });
 
@@ -1720,9 +1723,9 @@
     });
 
     if (!readOnly) {
-      // 金額入力イベント
+      // 金額入力イベント（手動変更フラグを立てる）
       result.querySelectorAll('.settle-amount-input').forEach(input => {
-        input.addEventListener('input', updateDiffs);
+        input.addEventListener('input', () => { amountsCustomized = true; updateDiffs(); });
       });
 
       // 均等割りに戻す
