@@ -1294,7 +1294,7 @@
     });
   }
 
-  // ── 支店番号→支店名 自動変換 ──────────────────────
+  // ── 支店番号 ⇔ 支店名 双方向変換 ──────────────────
   const BRANCH_CODES = {
     'PayPay銀行':            { '001': '本店' },
     '住信SBIネット銀行':      { '001': '本店' },
@@ -1321,28 +1321,53 @@
     },
   };
 
+  // 逆引きマップ（支店名 → 支店番号）をBRANCH_CODESから自動生成
+  const BRANCH_NAMES = {};
+  Object.entries(BRANCH_CODES).forEach(([bank, codes]) => {
+    BRANCH_NAMES[bank] = Object.fromEntries(Object.entries(codes).map(([c, n]) => [n, c]));
+  });
+
+  // 循環防止フラグ
+  let branchSyncing = false;
+
   function lookupBranchName() {
-    const bank  = (document.getElementById('bankName')?.value || '').trim();
-    const code  = (document.getElementById('bankBranchCode')?.value || '').trim().padStart(3, '0');
+    if (branchSyncing) return;
+    branchSyncing = true;
+    const bank = (document.getElementById('bankName')?.value || '').trim();
+    const code = (document.getElementById('bankBranchCode')?.value || '').trim().padStart(3, '0');
     const nameInput = document.getElementById('bankBranch');
     const autoLabel = document.getElementById('bankBranchAutoLabel');
-    if (!nameInput || !autoLabel) return;
-
     const resolved = BRANCH_CODES[bank]?.[code];
-    if (resolved) {
+    if (resolved && nameInput) {
       nameInput.value = resolved;
-      nameInput.readOnly = true;
       nameInput.style.color = 'var(--green)';
-      autoLabel.style.display = 'inline';
-    } else {
-      nameInput.readOnly = false;
+      if (autoLabel) autoLabel.style.display = 'inline';
+    } else if (nameInput) {
       nameInput.style.color = '';
-      autoLabel.style.display = 'none';
-      if (code !== '000') nameInput.value = '';
+      if (autoLabel) autoLabel.style.display = 'none';
     }
+    branchSyncing = false;
+  }
+
+  function lookupBranchCode() {
+    if (branchSyncing) return;
+    branchSyncing = true;
+    const bank = (document.getElementById('bankName')?.value || '').trim();
+    const name = (document.getElementById('bankBranch')?.value || '').trim();
+    const codeInput = document.getElementById('bankBranchCode');
+    const autoLabel = document.getElementById('bankBranchAutoLabel');
+    const resolved = BRANCH_NAMES[bank]?.[name];
+    if (resolved && codeInput) {
+      codeInput.value = resolved;
+      if (autoLabel) autoLabel.style.display = 'inline';
+    } else if (autoLabel) {
+      autoLabel.style.display = 'none';
+    }
+    branchSyncing = false;
   }
 
   document.getElementById('bankBranchCode')?.addEventListener('input', lookupBranchName);
+  document.getElementById('bankBranch')?.addEventListener('input', lookupBranchCode);
   document.getElementById('bankName')?.addEventListener('input', lookupBranchName);
 
   // ── 精算機能 ──────────────────────────────────
