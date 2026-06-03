@@ -520,14 +520,11 @@
       </div>
       <div>
         <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">支店番号</div>
-        <input type="text" id="bankBranchCode" placeholder="例：001" maxlength="3" inputmode="numeric" pattern="[0-9]{3}" style="margin-bottom:0;" autocomplete="off">
+        <input type="text" id="bankBranchCode" placeholder="例：001" maxlength="3" inputmode="numeric" style="margin-bottom:0;">
       </div>
       <div>
-        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">
-          支店名
-          <span id="bankBranchAutoLabel" style="display:none;font-size:0.7rem;color:var(--green);font-weight:700;margin-left:6px;letter-spacing:0;">✓ 自動取得</span>
-        </div>
-        <input type="text" id="bankBranch" placeholder="支店番号を入力すると自動表示" style="margin-bottom:0;" autocomplete="off">
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">支店名</div>
+        <input type="text" id="bankBranch" placeholder="例：本店営業部" style="margin-bottom:0;">
       </div>
       <div>
         <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">口座番号</div>
@@ -1294,81 +1291,6 @@
     });
   }
 
-  // ── 支店番号 ⇔ 支店名 双方向変換 ──────────────────
-  const BRANCH_CODES = {
-    'PayPay銀行':            { '001': '本店' },
-    '住信SBIネット銀行':      { '001': '本店' },
-    'auじぶん銀行':           { '001': '本店' },
-    'イオン銀行':             { '001': '本店' },
-    'セブン銀行':             { '001': '本店' },
-    'GMOあおぞらネット銀行':   { '001': '本店' },
-    'SBI新生銀行':            { '001': '本店', '002': '東京支店', '004': '大阪支店' },
-    '楽天銀行': {
-      '200': 'ロック支店', '201': 'ジャズ支店', '202': 'サンバ支店',
-      '203': 'ボサノバ支店', '204': 'クラシック支店', '205': 'ポップス支店',
-      '206': 'ソウル支店', '207': 'ブルース支店', '208': 'テクノ支店',
-      '209': 'スカ支店', '210': 'レゲエ支店', '211': 'ヒップホップ支店',
-      '212': 'ハーモニカ支店', '213': 'ダンス支店', '214': 'アンビエント支店',
-      '215': 'ビッグバンド支店', '216': 'タンゴ支店', '217': 'フォーク支店',
-      '218': 'カントリー支店', '219': 'フラメンコ支店', '220': 'オペラ支店',
-      '221': 'ブラス支店', '222': 'アコースティック支店', '223': 'ドラム支店',
-      '224': 'ギター支店', '225': 'ピアノ支店', '226': 'バイオリン支店',
-      '227': 'チェロ支店', '228': 'フルート支店', '229': 'クラリネット支店',
-      '230': 'サックス支店', '231': 'トランペット支店', '232': 'ハープ支店',
-      '233': 'ビオラ支店', '234': 'コントラバス支店', '235': 'オーボエ支店',
-      '236': 'ファゴット支店', '237': 'ホルン支店', '238': 'チューバ支店',
-      '239': 'マリンバ支店', '240': 'シタール支店',
-    },
-  };
-
-  // 逆引きマップ（支店名 → 支店番号）をBRANCH_CODESから自動生成
-  const BRANCH_NAMES = {};
-  Object.entries(BRANCH_CODES).forEach(([bank, codes]) => {
-    BRANCH_NAMES[bank] = Object.fromEntries(Object.entries(codes).map(([c, n]) => [n, c]));
-  });
-
-  // 循環防止フラグ
-  let branchSyncing = false;
-
-  function lookupBranchName() {
-    if (branchSyncing) return;
-    branchSyncing = true;
-    const bank = (document.getElementById('bankName')?.value || '').trim();
-    const code = (document.getElementById('bankBranchCode')?.value || '').trim().padStart(3, '0');
-    const nameInput = document.getElementById('bankBranch');
-    const autoLabel = document.getElementById('bankBranchAutoLabel');
-    const resolved = BRANCH_CODES[bank]?.[code];
-    if (resolved && nameInput) {
-      nameInput.value = resolved;
-      nameInput.style.color = 'var(--green)';
-      if (autoLabel) autoLabel.style.display = 'inline';
-    } else if (nameInput) {
-      nameInput.style.color = '';
-      if (autoLabel) autoLabel.style.display = 'none';
-    }
-    branchSyncing = false;
-  }
-
-  function lookupBranchCode() {
-    if (branchSyncing) return;
-    branchSyncing = true;
-    const bank = (document.getElementById('bankName')?.value || '').trim();
-    const name = (document.getElementById('bankBranch')?.value || '').trim();
-    const codeInput = document.getElementById('bankBranchCode');
-    const autoLabel = document.getElementById('bankBranchAutoLabel');
-    const resolved = BRANCH_NAMES[bank]?.[name];
-    if (resolved && codeInput) {
-      codeInput.value = resolved;
-      if (autoLabel) autoLabel.style.display = 'inline';
-    } else if (autoLabel) {
-      autoLabel.style.display = 'none';
-    }
-    branchSyncing = false;
-  }
-
-  document.getElementById('bankBranchCode')?.addEventListener('input', lookupBranchName);
-  document.getElementById('bankBranch')?.addEventListener('input', lookupBranchCode);
-  document.getElementById('bankName')?.addEventListener('input', lookupBranchName);
 
   // ── 精算機能 ──────────────────────────────────
 
