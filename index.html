@@ -491,7 +491,7 @@
   <!-- 振込先口座 -->
   <div id="bankInfoWrap" style="margin-bottom:20px;">
     <div style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:10px;display:flex;align-items:center;gap:6px;">🏦 振込先口座</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;">
       <div>
         <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">銀行名</div>
         <input type="text" id="bankName" list="bankNameList" placeholder="例：三井住友銀行" style="margin-bottom:0;" autocomplete="off">
@@ -519,9 +519,15 @@
         </datalist>
       </div>
       <div>
-        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">支店名</div>
-        <input type="text" id="bankBranch" list="bankBranchList" placeholder="例：本店営業部" style="margin-bottom:0;" autocomplete="off">
-        <datalist id="bankBranchList"></datalist>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">支店番号</div>
+        <input type="text" id="bankBranchCode" placeholder="例：001" maxlength="3" inputmode="numeric" pattern="[0-9]{3}" style="margin-bottom:0;" autocomplete="off">
+      </div>
+      <div>
+        <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">
+          支店名
+          <span id="bankBranchAutoLabel" style="display:none;font-size:0.7rem;color:var(--green);font-weight:700;margin-left:6px;letter-spacing:0;">✓ 自動取得</span>
+        </div>
+        <input type="text" id="bankBranch" placeholder="支店番号を入力すると自動表示" style="margin-bottom:0;" autocomplete="off">
       </div>
       <div>
         <div style="font-size:0.78rem;font-weight:600;color:var(--text-muted);margin-bottom:4px;text-transform:uppercase;letter-spacing:0.04em;">口座番号</div>
@@ -1288,37 +1294,56 @@
     });
   }
 
-  // ── 銀行名→支店名サジェスト ──────────────────────
-  const BANK_BRANCHES = {
-    '三菱UFJ銀行':    ['丸の内支店','東京営業部','大阪営業部','名古屋支店','横浜支店','渋谷支店','新宿支店','池袋支店','上野支店','品川支店'],
-    '三井住友銀行':   ['大阪本店営業部','東京営業部','本店','渋谷支店','新宿支店','池袋支店','横浜支店','名古屋支店','福岡支店','札幌支店'],
-    'みずほ銀行':     ['東京中央支店','大阪支店','丸の内支店','渋谷支店','新宿支店','横浜支店','名古屋支店','福岡支店','札幌支店','池袋支店'],
-    'りそな銀行':     ['大阪営業部','東京営業部','梅田支店','難波支店','渋谷支店','新宿支店','横浜支店','池袋支店','北浜支店','船場支店'],
-    '埼玉りそな銀行': ['大宮支店','浦和支店','川口支店','所沢支店','越谷支店','川越支店','本店','蕨支店','上尾支店','熊谷支店'],
-    'ゆうちょ銀行':   ['東京貯金事務センター','大阪貯金事務センター','さいたま貯金事務センター','名古屋貯金事務センター','福岡貯金事務センター','札幌貯金事務センター','仙台貯金事務センター','広島貯金事務センター','高松貯金事務センター','熊本貯金事務センター'],
-    '楽天銀行':       ['第一営業部'],
-    'PayPay銀行':     ['本店'],
-    '住信SBIネット銀行': ['本店'],
-    'auじぶん銀行':   ['本店'],
-    'イオン銀行':     ['本店'],
-    'セブン銀行':     ['本店'],
-    'GMOあおぞらネット銀行': ['本店'],
-    'SBI新生銀行':    ['本店','東京支店','大阪支店'],
-    '横浜銀行':       ['本店営業部','横浜駅前支店','川崎支店','新横浜支店','上大岡支店','戸塚支店','藤沢支店','相模原支店','町田支店','海老名支店'],
-    '千葉銀行':       ['本店営業部','千葉支店','船橋支店','市川支店','松戸支店','柏支店','市原支店','木更津支店','成田支店','我孫子支店'],
-    '静岡銀行':       ['本店営業部','静岡支店','浜松支店','沼津支店','富士支店','三島支店','清水支店','藤枝支店','焼津支店','掛川支店'],
-    '福岡銀行':       ['本店営業部','博多支店','天神支店','小倉支店','北九州支店','久留米支店','大牟田支店','佐賀支店','長崎支店','熊本支店'],
-    '常陽銀行':       ['本店営業部','水戸支店','つくば支店','土浦支店','取手支店','古河支店','日立支店','ひたちなか支店','笠間支店','鹿嶋支店'],
-    '広島銀行':       ['本店営業部','広島支店','福山支店','呉支店','東広島支店','廿日市支店','尾道支店','三原支店','岡山支店','松山支店'],
+  // ── 支店番号→支店名 自動変換 ──────────────────────
+  const BRANCH_CODES = {
+    'PayPay銀行':            { '001': '本店' },
+    '住信SBIネット銀行':      { '001': '本店' },
+    'auじぶん銀行':           { '001': '本店' },
+    'イオン銀行':             { '001': '本店' },
+    'セブン銀行':             { '001': '本店' },
+    'GMOあおぞらネット銀行':   { '001': '本店' },
+    'SBI新生銀行':            { '001': '本店', '002': '東京支店', '004': '大阪支店' },
+    '楽天銀行': {
+      '200': 'ロック支店', '201': 'ジャズ支店', '202': 'サンバ支店',
+      '203': 'ボサノバ支店', '204': 'クラシック支店', '205': 'ポップス支店',
+      '206': 'ソウル支店', '207': 'ブルース支店', '208': 'テクノ支店',
+      '209': 'スカ支店', '210': 'レゲエ支店', '211': 'ヒップホップ支店',
+      '212': 'ハーモニカ支店', '213': 'ダンス支店', '214': 'アンビエント支店',
+      '215': 'ビッグバンド支店', '216': 'タンゴ支店', '217': 'フォーク支店',
+      '218': 'カントリー支店', '219': 'フラメンコ支店', '220': 'オペラ支店',
+      '221': 'ブラス支店', '222': 'アコースティック支店', '223': 'ドラム支店',
+      '224': 'ギター支店', '225': 'ピアノ支店', '226': 'バイオリン支店',
+      '227': 'チェロ支店', '228': 'フルート支店', '229': 'クラリネット支店',
+      '230': 'サックス支店', '231': 'トランペット支店', '232': 'ハープ支店',
+      '233': 'ビオラ支店', '234': 'コントラバス支店', '235': 'オーボエ支店',
+      '236': 'ファゴット支店', '237': 'ホルン支店', '238': 'チューバ支店',
+      '239': 'マリンバ支店', '240': 'シタール支店',
+    },
   };
 
-  document.getElementById('bankName')?.addEventListener('input', () => {
-    const bank = document.getElementById('bankName').value;
-    const dl = document.getElementById('bankBranchList');
-    if (!dl) return;
-    const branches = BANK_BRANCHES[bank] || [];
-    dl.innerHTML = branches.map(b => `<option value="${b}">`).join('');
-  });
+  function lookupBranchName() {
+    const bank  = (document.getElementById('bankName')?.value || '').trim();
+    const code  = (document.getElementById('bankBranchCode')?.value || '').trim().padStart(3, '0');
+    const nameInput = document.getElementById('bankBranch');
+    const autoLabel = document.getElementById('bankBranchAutoLabel');
+    if (!nameInput || !autoLabel) return;
+
+    const resolved = BRANCH_CODES[bank]?.[code];
+    if (resolved) {
+      nameInput.value = resolved;
+      nameInput.readOnly = true;
+      nameInput.style.color = 'var(--green)';
+      autoLabel.style.display = 'inline';
+    } else {
+      nameInput.readOnly = false;
+      nameInput.style.color = '';
+      autoLabel.style.display = 'none';
+      if (code !== '000') nameInput.value = '';
+    }
+  }
+
+  document.getElementById('bankBranchCode')?.addEventListener('input', lookupBranchName);
+  document.getElementById('bankName')?.addEventListener('input', lookupBranchName);
 
   // ── 精算機能 ──────────────────────────────────
 
@@ -1367,7 +1392,7 @@
           <div style="font-size:0.85rem;font-weight:700;color:var(--text);margin-bottom:10px;">🏦 振込先口座</div>
           <div style="background:#f5f5f5;border:1px solid var(--border);border-radius:8px;padding:12px 16px;font-size:0.9rem;display:flex;gap:24px;flex-wrap:wrap;">
             ${bankInfo.name ? `<div><span style="color:var(--text-muted);font-size:0.78rem;">銀行名</span><div style="font-weight:600;margin-top:2px;">${bankInfo.name}</div></div>` : ''}
-            ${bankInfo.branch ? `<div><span style="color:var(--text-muted);font-size:0.78rem;">支店名</span><div style="font-weight:600;margin-top:2px;">${bankInfo.branch}</div></div>` : ''}
+            ${(bankInfo.branchCode || bankInfo.branch) ? `<div><span style="color:var(--text-muted);font-size:0.78rem;">支店</span><div style="font-weight:600;margin-top:2px;">${bankInfo.branchCode ? `${bankInfo.branchCode} ` : ''}${bankInfo.branch || ''}</div></div>` : ''}
             ${bankInfo.account ? `<div><span style="color:var(--text-muted);font-size:0.78rem;">口座番号</span><div style="font-weight:600;margin-top:2px;">${bankInfo.account}</div></div>` : ''}
           </div>`;
       } else {
@@ -1376,7 +1401,13 @@
     } else {
       // ホスト：入力欄に既存値をセット
       if (document.getElementById('bankName')) document.getElementById('bankName').value = bankInfo.name || '';
-      if (document.getElementById('bankBranch')) document.getElementById('bankBranch').value = bankInfo.branch || '';
+      if (document.getElementById('bankBranchCode')) {
+        document.getElementById('bankBranchCode').value = bankInfo.branchCode || '';
+        lookupBranchName();
+        // 自動取得できなかった場合は保存済み支店名を手動欄にセット
+        const nameInput = document.getElementById('bankBranch');
+        if (nameInput && !nameInput.value) nameInput.value = bankInfo.branch || '';
+      }
       if (document.getElementById('bankAccount')) document.getElementById('bankAccount').value = bankInfo.account || '';
     }
 
@@ -1429,6 +1460,7 @@
     const paid = getCurrentPaid();
     const bankInfo = {
       name: document.getElementById('bankName')?.value.trim() || '',
+      branchCode: document.getElementById('bankBranchCode')?.value.trim() || '',
       branch: document.getElementById('bankBranch')?.value.trim() || '',
       account: document.getElementById('bankAccount')?.value.trim() || '',
     };
