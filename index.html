@@ -288,6 +288,33 @@
     .settle-diff { font-size: 0.8rem; }
     .settle-diff.over { color: #c0392b; }
     .settle-diff.under { color: #007a3d; }
+    .settle-name { font-weight: 600; }
+    .settle-amount-cell { text-align: right; font-weight: 700; }
+    /* settle banner */
+    .settle-banner { border-radius:8px; padding:10px 16px; margin-bottom:12px;
+      display:flex; align-items:center; gap:8px; font-weight:600; }
+    .settle-banner-ok { background:#e8f5ee; border:1.5px solid var(--green-mid); color:var(--green); }
+    .settle-banner-ng { background:#fff0f0; border:1.5px solid #f5c0c0; color:#c0392b; }
+    /* 自動入力ボタンの状態 */
+    .btn-auto-ready { background:var(--green) !important; color:white !important;
+      border:1.5px solid var(--green) !important; cursor:pointer !important; font-weight:700 !important; }
+    .btn-auto-disabled { background:#f0f0f0 !important; color:#aaa !important;
+      border:1.5px solid #ddd !important; cursor:not-allowed !important; }
+    /* 時刻入力欄 */
+    .time-input { width:110px; padding:10px 8px; border:1.5px solid var(--border);
+      border-radius:8px; font-size:0.9rem; outline:none; background:#fafafa; }
+    /* 投票記号表示 */
+    .vote-display { font-size:1.2rem; font-weight:700; }
+    .vote-display-o { color:#007a3d; }
+    .vote-display-t { color:#c8a84b; }
+    .vote-display-x { color:#c0392b; }
+    .vote-display-empty { color:#ccc; font-size:0.8rem; }
+    /* インライン編集 */
+    .inline-edit-input { font-size:1rem; font-weight:700; color:var(--text);
+      border:1.5px solid var(--green); border-radius:4px; padding:2px 8px; outline:none; width:auto; }
+    .inline-edit-memo { width:100%; font-size:0.88rem; color:var(--text);
+      border:1.5px solid var(--green); border-radius:4px; padding:6px 8px;
+      outline:none; resize:vertical; font-family:inherit; line-height:1.6; background:white; }
   </style>
 </head>
 <body>
@@ -314,7 +341,7 @@
   </div>
 
   <div class="field">
-    <label>開始日</label>
+    <label>調整開始日</label>
     <input type="date" id="startDate">
   </div>
 
@@ -602,7 +629,7 @@
     const timeInput = document.createElement('input');
     timeInput.type = 'time';
     timeInput.className = 'time-input';
-    timeInput.style.cssText = 'width:110px;padding:10px 8px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;outline:none;background:#fafafa;';
+    // スタイルはCSS .time-input クラスで管理
     const defaultTimeVal = document.getElementById('defaultTime').value;
     timeInput.value = time || defaultTimeVal || '';
     timeInput.style.display = document.getElementById('useTime').checked ? 'inline-block' : 'none';
@@ -659,12 +686,14 @@
     btn.disabled = !ready;
     const hint = document.getElementById('autoFillHint');
     if (ready) {
-      btn.style.cssText = 'background:var(--green);color:white;border:1.5px solid var(--green);cursor:pointer;font-weight:700;';
+      btn.classList.add('btn-auto-ready');
+      btn.classList.remove('btn-auto-disabled');
       btn.classList.add('btn-ready');
       btn.textContent = '⚡ 候補日を自動入力する';
       if (hint) hint.style.display = 'inline';
     } else {
-      btn.style.cssText = 'background:#f0f0f0;color:#aaa;border:1.5px solid #ddd;cursor:not-allowed;';
+      btn.classList.remove('btn-auto-ready');
+      btn.classList.add('btn-auto-disabled');
       btn.classList.remove('btn-ready');
       btn.textContent = '⚡ 自動入力';
       if (hint) hint.style.display = 'none';
@@ -804,24 +833,57 @@
       }
     });
 
-    // ── ホスト専用：タイトル編集 ──
+    // ── ホスト専用：タイトル編集（インライン） ──
     document.getElementById('editTitleBtn').addEventListener('click', () => {
-      const current = document.getElementById('viewTitle').textContent;
-      const newTitle = prompt('イベント名を編集してください：', current);
-      if (newTitle && newTitle.trim() && newTitle.trim() !== current) {
-        updateDoc(eventRef, { name: newTitle.trim() });
-        showToast('✅ タイトルを更新しました');
-      }
+      const titleEl = document.getElementById('viewTitle');
+      if (titleEl.tagName === 'INPUT') return;
+      const current = titleEl.textContent;
+      const input = document.createElement('input');
+      input.type = 'text';
+      input.value = current;
+      input.id = 'viewTitle';
+      input.className = 'inline-edit-input';
+      titleEl.replaceWith(input);
+      input.focus(); input.select();
+      const save = () => {
+        const val = input.value.trim() || current;
+        const span = document.createElement('span');
+        span.id = 'viewTitle';
+        span.textContent = val;
+        input.replaceWith(span);
+        if (val !== current) { updateDoc(eventRef, { name: val }); showToast('✅ タイトルを更新しました'); }
+      };
+      input.addEventListener('blur', save);
+      input.addEventListener('keydown', e => {
+        if (e.key === 'Enter') save();
+        if (e.key === 'Escape') { const span = document.createElement('span'); span.id='viewTitle'; span.textContent=current; input.replaceWith(span); }
+      });
     });
 
-    // ── ホスト専用：メモ編集 ──
+    // ── ホスト専用：メモ編集（インライン） ──
     document.getElementById('editMemoBtn').addEventListener('click', () => {
-      const current = document.getElementById('eventMemoView').textContent;
-      const newMemo = prompt('メモを編集してください：', current);
-      if (newMemo !== null) {
-        updateDoc(eventRef, { memo: newMemo.trim() });
-        showToast('✅ メモを更新しました');
-      }
+      const memoEl = document.getElementById('eventMemoView');
+      if (memoEl.tagName === 'TEXTAREA') return;
+      const current = memoEl.textContent;
+      const ta = document.createElement('textarea');
+      ta.value = current;
+      ta.id = 'eventMemoView';
+      ta.className = 'inline-edit-memo';
+      ta.rows = 3;
+      memoEl.replaceWith(ta);
+      ta.focus();
+      const save = () => {
+        const val = ta.value.trim();
+        const span = document.createElement('span');
+        span.id = 'eventMemoView';
+        span.textContent = val || current;
+        ta.replaceWith(span);
+        if (val !== current) { updateDoc(eventRef, { memo: val }); showToast('✅ メモを更新しました'); }
+      };
+      ta.addEventListener('blur', save);
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Escape') { const span = document.createElement('span'); span.id='eventMemoView'; span.textContent=current; ta.replaceWith(span); }
+      });
     });
 
     document.getElementById('copyParticipantUrlBtn')?.addEventListener('click', () => {
@@ -841,11 +903,22 @@
     });
 
     document.getElementById('addMemoBtn')?.addEventListener('click', () => {
-      const newMemo = prompt('メモを入力してください：', '');
-      if (newMemo && newMemo.trim()) {
-        updateDoc(eventRef, { memo: newMemo.trim() });
-        showToast('✅ メモを追加しました');
-      }
+      const addMemoWrap = document.getElementById('addMemoWrap');
+      const ta = document.createElement('textarea');
+      ta.className = 'inline-edit-memo';
+      ta.rows = 3;
+      ta.placeholder = '締切・場所・その他連絡事項など';
+      addMemoWrap.replaceWith(ta);
+      ta.focus();
+      const save = () => {
+        const val = ta.value.trim();
+        if (val) { updateDoc(eventRef, { memo: val }); showToast('✅ メモを追加しました'); }
+        else { ta.replaceWith(addMemoWrap); }
+      };
+      ta.addEventListener('blur', save);
+      ta.addEventListener('keydown', e => {
+        if (e.key === 'Escape') ta.replaceWith(addMemoWrap);
+      });
     });
   }
 
@@ -910,8 +983,8 @@
     const labelMap = { o: '◯', t: '△', x: '✕' };
     // ロック時：選択済みの記号だけ表示
     const display = current
-      ? `<span class="vote-display" style="color:${colorMap[current]};font-size:1.2rem;font-weight:700;">${labelMap[current]}</span>`
-      : `<span style="color:#ccc;font-size:0.8rem;">-</span>`;
+      ? `<span class="vote-display vote-display-${current}">${labelMap[current]}</span>`
+      : `<span class="vote-display-empty">-</span>`;
     // 編集時用の全ボタン（初期非表示）
     const btns = [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
       `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}" style="display:none;">${label}</button>`
@@ -989,8 +1062,13 @@
             const sel = td.querySelector('.vote-btn.selected');
             let disp = td.querySelector('.vote-display');
             if (!disp) { disp = document.createElement('span'); disp.className = 'vote-display'; td.insertBefore(disp, td.firstChild); }
-            if (sel) { disp.style.cssText = `color:${colorMap[sel.dataset.key]};font-size:1.2rem;font-weight:700;`; disp.textContent = labelMap[sel.dataset.key]; }
-            else { disp.style.cssText = 'color:#ccc;font-size:0.8rem;'; disp.textContent = '-'; }
+            if (sel) {
+              disp.className = `vote-display vote-display-${sel.dataset.key}`;
+              disp.textContent = labelMap[sel.dataset.key];
+            } else {
+              disp.className = 'vote-display-empty';
+              disp.textContent = '-';
+            }
           });
           delBtn.classList.remove('visible');
           showToast('💾 変更を保存しました');
@@ -1300,90 +1378,90 @@
     showToast('🔒 精算を非公開にしました');
   });
 
+  // ── 精算：ヘルパー関数 ──────────────────────────
+
+  function buildSettleMatchBanner(diff, total, collected) {
+    const ok = diff === 0 && total > 0;
+    const cls = ok ? 'settle-banner settle-banner-ok' : 'settle-banner settle-banner-ng';
+    const msg = ok
+      ? `✅ 個人合計と合計金額が一致しています（¥${total.toLocaleString()}）`
+      : `⚠️ 個人合計（¥${collected.toLocaleString()}）と合計金額（¥${total.toLocaleString()}）が${diff > 0 ? `¥${diff.toLocaleString()} 超過` : `¥${Math.abs(diff).toLocaleString()} 不足`}しています`;
+    return `<div id="settleMatchBanner" class="${cls}">${msg}</div>`;
+  }
+
+  function buildSettleSummary(total, collected, count, perPerson) {
+    return `<div class="settle-summary">
+      <div class="settle-summary-item"><div class="val">¥${total.toLocaleString()}</div><div class="lbl">合計金額</div></div>
+      <div class="settle-summary-item"><div class="val">¥${collected.toLocaleString()}</div><div class="lbl">個人合計</div></div>
+      <div class="settle-summary-item"><div class="val">${count}人</div><div class="lbl">参加人数</div></div>
+      <div class="settle-summary-item"><div class="val">¥${perPerson.toLocaleString()}</div><div class="lbl">均等割り（1人）</div></div>
+    </div>`;
+  }
+
+  function buildSettleTable(sortedNames, savedAmounts, savedPaid, perPerson, readOnly) {
+    const rows = sortedNames.map(name => {
+      const amount = savedAmounts[name] !== undefined ? savedAmounts[name] : perPerson;
+      const isPaid = savedPaid[name] || false;
+      const paidCell = `<div class="settle-paid">
+        <input type="checkbox" id="paid-${CSS.escape(name)}" class="paid-check" data-name="${name}" ${isPaid ? 'checked' : ''}>
+        <label for="paid-${CSS.escape(name)}">支払済み</label>
+      </div>`;
+      if (readOnly) {
+        return `<tr id="row-${CSS.escape(name)}" class="${isPaid ? 'paid' : ''}">
+          <td class="settle-name">${name}</td>
+          <td class="settle-amount-cell">¥${amount.toLocaleString()}</td>
+          <td>${paidCell}</td>
+        </tr>`;
+      }
+      return `<tr id="row-${CSS.escape(name)}" class="${isPaid ? 'paid' : ''}">
+        <td class="settle-name">${name}</td>
+        <td><input type="number" class="settle-amount-input" data-name="${name}" value="${amount}" min="0"></td>
+        <td class="settle-diff" id="diff-${CSS.escape(name)}"></td>
+        <td>${paidCell}</td>
+      </tr>`;
+    }).join('');
+    return `<table class="settle-table">
+      <thead><tr>
+        <th>名前</th><th>金額（円）</th>
+        ${readOnly ? '' : '<th>均等との差</th>'}
+        <th>状態</th>
+      </tr></thead>
+      <tbody>${rows}</tbody>
+    </table>`;
+  }
+
+  function updateSettleBanner(banner, diff, total, collected) {
+    const ok = diff === 0 && total > 0;
+    banner.className = ok ? 'settle-banner settle-banner-ok' : 'settle-banner settle-banner-ng';
+    banner.textContent = ok
+      ? `✅ 個人合計と合計金額が一致しています（¥${total.toLocaleString()}）`
+      : `⚠️ 個人合計（¥${collected.toLocaleString()}）と合計金額（¥${total.toLocaleString()}）が${diff > 0 ? `¥${diff.toLocaleString()} 超過` : `¥${Math.abs(diff).toLocaleString()} 不足`}しています`;
+  }
+
   function renderSettle(names, total, savedAmounts, savedPaid, readOnly) {
     const count = names.length;
     const perPerson = count > 0 ? Math.ceil(total / count) : 0;
     const result = document.getElementById('settleResult');
     if (count === 0) { result.innerHTML = '<p class="empty-msg">参加者がいません</p>'; return; }
 
-    // 金額の高い順にソート
     const sortedNames = [...names].sort((a, b) => {
       const va = savedAmounts[a] !== undefined ? savedAmounts[a] : perPerson;
       const vb = savedAmounts[b] !== undefined ? savedAmounts[b] : perPerson;
       return vb - va;
     });
 
-    const rows = sortedNames.map(name => {
-      const amount = savedAmounts[name] !== undefined ? savedAmounts[name] : perPerson;
-      const isPaid = savedPaid[name] || false;
-      if (readOnly) {
-        return `<tr id="row-${CSS.escape(name)}" class="${isPaid?'paid':''}">
-          <td style="font-weight:600;">${name}</td>
-          <td style="text-align:right;font-weight:700;">¥${amount.toLocaleString()}</td>
-          <td>
-            <div class="settle-paid">
-              <input type="checkbox" id="paid-${CSS.escape(name)}" class="paid-check" data-name="${name}" ${isPaid?'checked':''}>
-              <label for="paid-${CSS.escape(name)}">支払済み</label>
-            </div>
-          </td>
-        </tr>`;
-      }
-      return `<tr id="row-${CSS.escape(name)}" class="${isPaid?'paid':''}">
-        <td style="font-weight:600;">${name}</td>
-        <td><input type="number" class="settle-amount-input" data-name="${name}" value="${amount}" min="0"></td>
-        <td class="settle-diff" id="diff-${CSS.escape(name)}"></td>
-        <td>
-          <div class="settle-paid">
-            <input type="checkbox" id="paid-${CSS.escape(name)}" class="paid-check" data-name="${name}" ${isPaid?'checked':''}>
-            <label for="paid-${CSS.escape(name)}">支払済み</label>
-          </div>
-        </td>
-      </tr>`;
-    }).join('');
-
     const collected = names.reduce((sum, name) => {
       const v = savedAmounts[name] !== undefined ? savedAmounts[name] : perPerson;
       return sum + v;
     }, 0);
-    const diff = collected - total;
-
-    const matchBanner = diff === 0 && total > 0
-      ? `<div id="settleMatchBanner" style="background:#e8f5ee;border:1.5px solid var(--green-mid);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-weight:600;color:var(--green);">✅ 個人合計と合計金額が一致しています（¥${total.toLocaleString()}）</div>`
-      : `<div id="settleMatchBanner" style="background:#fff0f0;border:1.5px solid #f5c0c0;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-weight:600;color:#c0392b;">⚠️ 個人合計（¥${collected.toLocaleString()}）と合計金額（¥${total.toLocaleString()}）が${diff > 0 ? `¥${diff.toLocaleString()} 超過` : `¥${Math.abs(diff).toLocaleString()} 不足`}しています</div>`;
 
     result.innerHTML = `
-      ${matchBanner}
-      <div class="settle-summary">
-        <div class="settle-summary-item">
-          <div class="val">¥${total.toLocaleString()}</div>
-          <div class="lbl">合計金額</div>
-        </div>
-        <div class="settle-summary-item">
-          <div class="val">¥${collected.toLocaleString()}</div>
-          <div class="lbl">個人合計</div>
-        </div>
-        <div class="settle-summary-item">
-          <div class="val">${count}人</div>
-          <div class="lbl">参加人数</div>
-        </div>
-        <div class="settle-summary-item">
-          <div class="val">¥${perPerson.toLocaleString()}</div>
-          <div class="lbl">均等割り（1人）</div>
-        </div>
-      </div>
-      <table class="settle-table">
-        <thead><tr>
-          <th>名前</th>
-          <th>金額（円）</th>
-          ${readOnly ? '' : '<th>均等との差</th>'}
-          <th>状態</th>
-        </tr></thead>
-        <tbody>${rows}</tbody>
-      </table>
-      ${readOnly ? '' : '<button class="btn btn-secondary" id="resetAmountsBtn" style="width:100%;">🔄 均等割りに戻す</button>'}
+      ${buildSettleMatchBanner(collected - total, total, collected)}
+      ${buildSettleSummary(total, collected, count, perPerson)}
+      ${buildSettleTable(sortedNames, savedAmounts, savedPaid, perPerson, readOnly)}
+      ${readOnly ? '' : '<button class="btn btn-secondary btn-full" id="resetAmountsBtn">🔄 均等割りに戻す</button>'}
     `;
 
-    // 差額・一致バナーの更新関数
     function updateDiffs() {
       sortedNames.forEach(name => {
         const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
@@ -1394,23 +1472,13 @@
         diffEl.textContent = d === 0 ? '±0' : d > 0 ? `+¥${d.toLocaleString()}` : `-¥${Math.abs(d).toLocaleString()}`;
         diffEl.className = 'settle-diff' + (d > 0 ? ' over' : d < 0 ? ' under' : '');
       });
-      // 個人合計と合計金額の一致チェックを更新
       const currentTotal = parseInt(document.getElementById('totalAmount')?.value) || total;
       const currentCollected = sortedNames.reduce((sum, name) => {
         const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
         return sum + (input ? (parseInt(input.value) || 0) : (savedAmounts[name] || perPerson));
       }, 0);
-      const currentDiff = currentCollected - currentTotal;
       const banner = result.querySelector('#settleMatchBanner');
-      if (banner) {
-        if (currentDiff === 0 && currentTotal > 0) {
-          banner.style.cssText = 'background:#e8f5ee;border:1.5px solid var(--green-mid);border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-weight:600;color:var(--green);';
-          banner.textContent = `✅ 個人合計と合計金額が一致しています（¥${currentTotal.toLocaleString()}）`;
-        } else {
-          banner.style.cssText = 'background:#fff0f0;border:1.5px solid #f5c0c0;border-radius:8px;padding:10px 16px;margin-bottom:12px;display:flex;align-items:center;gap:8px;font-weight:600;color:#c0392b;';
-          banner.textContent = `⚠️ 個人合計（¥${currentCollected.toLocaleString()}）と合計金額（¥${currentTotal.toLocaleString()}）が${currentDiff > 0 ? `¥${currentDiff.toLocaleString()} 超過` : `¥${Math.abs(currentDiff).toLocaleString()} 不足`}しています`;
-        }
-      }
+      if (banner) updateSettleBanner(banner, currentCollected - currentTotal, currentTotal, currentCollected);
     }
     updateDiffs();
 
