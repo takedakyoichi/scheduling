@@ -1040,7 +1040,10 @@
       const dateLabel = `${dt.getMonth()+1}/${dt.getDate()}(${WEEKS[day]})` + (timePart ? ` ${timePart}` : '');
       const isBest = counts[i] === maxCount && maxCount > 0;
       const isConfirmed = confirmedDate === i;
-      const cells = entries.map(([name, votes]) => buildVoteCell(name, i, votes[i] || '')).join('');
+      const cells = entries.map(([name, votes]) => {
+        const isPreset = dates.every((_, di) => !votes[di]);
+        return buildVoteCell(name, i, votes[i] || '', isPreset);
+      }).join('');
       const countStr = Number.isInteger(counts[i]) ? counts[i] : counts[i].toFixed(1);
       const inputCell = `<td class="input-col">
         <div class="vote-btns">
@@ -1061,19 +1064,20 @@
     }).join('');
   }
 
-  function buildVoteCell(name, idx, current) {
-    const colorMap = { o: '#007a3d', t: '#c8a84b', x: '#c0392b' };
+  function buildVoteCell(name, idx, current, isPreset = false) {
     const labelMap = { o: '◯', t: '△', x: '✕' };
-    // ロック時：選択済みの記号だけ表示
+    const btns = [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
+      `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}">${label}</button>`
+    ).join('');
+    if (isPreset) {
+      // 未回答プリセット：最初からボタンを表示（ロックなし）
+      return `<td data-col="${name}" data-preset="1"><div class="vote-btns">${btns}</div></td>`;
+    }
+    // 通常：ロック表示
     const display = current
       ? `<span class="vote-display vote-display-${current}">${labelMap[current]}</span>`
       : `<span class="vote-display-empty">-</span>`;
-    // 編集時用の全ボタン（初期非表示）
-    const btns = `<div class="vote-btns" style="display:none;">` +
-      [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
-        `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}">${label}</button>`
-      ).join('') + `</div>`;
-    return `<td class="locked" data-col="${name}">${display}${btns}</td>`;
+    return `<td class="locked" data-col="${name}">${display}<div class="vote-btns" style="display:none;">${btns}</div></td>`;
   }
 
   function buildNoteRow(entries) {
@@ -1268,30 +1272,52 @@
     if (registerBtn) {
       registerBtn.addEventListener('click', async () => {
         const rawName = (wrap.querySelector('#newName')?.value || '').trim();
-        if (!rawName) { showToast('⚠️ 名前を入力してください'); return; }
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const data = snap.data();
-        const existing = data.participants || {};
-        if (Object.keys(existing).some(n => normalizeName(n) === normalizeName(rawName))) {
-          showToast('⚠️ 同じ名前が既に登録されています'); return;
-        }
-        // 全候補日の選択チェック
-        const unselected = dates.findIndex((_, i) =>
-          !wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`)
-        );
-        if (unselected !== -1) {
-          const dt = new Date(dates[unselected] + 'T00:00:00');
-          showToast(`⚠️ ${dt.getMonth()+1}/${dt.getDate()} の回答を選択してください`);
-          return;
-        }
-        const note = (wrap.querySelector('#newNote')?.value || '').trim();
-        const votes = { _note: note, _joinedAt: Date.now() };
-        dates.forEach((_, i) => {
-          const sel = wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`);
-          votes[i] = sel ? sel.dataset.key : '';
+        const updates = {};
+        let savedCount = 0;
+
+        // ── プリセット参加者の投票を保存 ──
+        wrap.querySelectorAll('td[data-preset="1"]').forEach(td => {
+          const name = td.dataset.col;
+          // この参加者の全日付の選択を確認
+          const allSelected = dates.every((_, i) =>
+            wrap.querySelector(`.vote-btn[data-name="${CSS.escape(name)}"][data-idx="${i}"].selected`)
+          );
+          if (!allSelected) return;
+          dates.forEach((_, i) => {
+            const sel = wrap.querySelector(`.vote-btn[data-name="${CSS.escape(name)}"][data-idx="${i}"].selected`);
+            updates[`participants.${name}.${i}`] = sel.dataset.key;
+          });
+          savedCount++;
         });
-        await updateDoc(doc(db, 'events', eventId), { [`participants.${rawName}`]: votes });
-        showToast(`✅ ${rawName} さんの回答を登録しました`);
+
+        // ── 新規参加者の投票を保存 ──
+        if (rawName) {
+          const snap = await getDoc(doc(db, 'events', eventId));
+          const existing = snap.data().participants || {};
+          if (Object.keys(existing).some(n => normalizeName(n) === normalizeName(rawName))) {
+            showToast('⚠️ 同じ名前が既に登録されています'); return;
+          }
+          const unselected = dates.findIndex((_, i) =>
+            !wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`)
+          );
+          if (unselected !== -1) {
+            const dt = new Date(dates[unselected].split(' ')[0] + 'T00:00:00');
+            showToast(`⚠️ ${dt.getMonth()+1}/${dt.getDate()} の回答を選択してください`);
+            return;
+          }
+          const note = (wrap.querySelector('#newNote')?.value || '').trim();
+          const votes = { _note: note, _joinedAt: Date.now() };
+          dates.forEach((_, i) => {
+            const sel = wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`);
+            votes[i] = sel ? sel.dataset.key : '';
+          });
+          updates[`participants.${rawName}`] = votes;
+          savedCount++;
+        }
+
+        if (!savedCount) { showToast('⚠️ 名前を入力してください'); return; }
+        await updateDoc(doc(db, 'events', eventId), updates);
+        showToast(rawName ? `✅ ${rawName} さんの回答を登録しました` : '✅ 回答を登録しました');
       });
     }
   }
