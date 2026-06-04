@@ -719,38 +719,12 @@
     }).filter(d => d !== null);
   }
 
-  // 自動入力ボタンの有効化チェック
-  function checkAutoFillReady() {
+  // 候補日自動入力（ボタン・自動トリガー共通）
+  function runAutoFill() {
     const startVal = document.getElementById('startDate').value;
     const weeksEl = document.querySelector('input[name="weeks"]:checked');
     const daytypeEl = document.querySelector('input[name="daytype"]:checked');
-    const btn = document.getElementById('autoFillBtn');
-    const ready = startVal && weeksEl && daytypeEl;
-    btn.disabled = !ready;
-    const hint = document.getElementById('autoFillHint');
-    if (ready) {
-      btn.classList.add('btn-auto-ready');
-      btn.classList.remove('btn-auto-disabled');
-      btn.classList.add('btn-ready');
-      btn.textContent = '⚡ 候補日を自動入力する';
-      if (hint) hint.style.display = 'inline';
-    } else {
-      btn.classList.remove('btn-auto-ready');
-      btn.classList.add('btn-auto-disabled');
-      btn.classList.remove('btn-ready');
-      btn.textContent = '⚡ 自動入力';
-      if (hint) hint.style.display = 'none';
-    }
-  }
-  document.getElementById('startDate').addEventListener('change', checkAutoFillReady);
-  document.querySelectorAll('input[name="weeks"], input[name="daytype"]').forEach(el => {
-    el.addEventListener('change', checkAutoFillReady);
-  });
-
-  document.getElementById('autoFillBtn').addEventListener('click', () => {
-    const startVal = document.getElementById('startDate').value;
-    const weeksEl = document.querySelector('input[name="weeks"]:checked');
-    const daytypeEl = document.querySelector('input[name="daytype"]:checked');
+    if (!startVal || !weeksEl || !daytypeEl) return;
     const weeks = parseInt(weeksEl.value);
     const daytype = daytypeEl.value;
     document.getElementById('dateList').innerHTML = '';
@@ -765,13 +739,41 @@
       if (daytype === 'weekday') skip = day === 0 || day === 6 || isHoliday;
       else if (daytype === 'friday') skip = day !== 5 || isHoliday;
       else if (daytype === 'weekend') skip = !(day === 0 || day === 6 || isHoliday);
-      // 'all' はスキップなし
       if (!skip) addDateRow(dateStr);
       current.setDate(current.getDate() + 1);
     }
-    document.getElementById('autoFillBtn').classList.remove('btn-ready');
+    const btn = document.getElementById('autoFillBtn');
+    btn.classList.remove('btn-ready');
     const hint = document.getElementById('autoFillHint');
     if (hint) hint.style.display = 'none';
+  }
+
+  // 3条件が揃ったら自動実行
+  function checkAutoFillReady() {
+    const startVal = document.getElementById('startDate').value;
+    const weeksEl = document.querySelector('input[name="weeks"]:checked');
+    const daytypeEl = document.querySelector('input[name="daytype"]:checked');
+    const btn = document.getElementById('autoFillBtn');
+    const ready = startVal && weeksEl && daytypeEl;
+    btn.disabled = !ready;
+    if (ready) {
+      btn.classList.add('btn-auto-ready');
+      btn.classList.remove('btn-auto-disabled');
+      runAutoFill();
+    } else {
+      btn.classList.remove('btn-auto-ready');
+      btn.classList.add('btn-auto-disabled');
+      btn.classList.remove('btn-ready');
+      btn.textContent = '⚡ 自動入力';
+    }
+  }
+  document.getElementById('startDate').addEventListener('change', checkAutoFillReady);
+  document.querySelectorAll('input[name="weeks"], input[name="daytype"]').forEach(el => {
+    el.addEventListener('change', checkAutoFillReady);
+  });
+
+  document.getElementById('autoFillBtn').addEventListener('click', () => {
+    runAutoFill();
     showToast('✅ 候補日を自動入力しました');
   });
 
