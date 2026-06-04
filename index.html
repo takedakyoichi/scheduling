@@ -161,7 +161,7 @@
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
     /* 入力列（テーブル右端） */
-    th.input-col { background: #004d26; min-width: 100px; }
+    th.input-col { background: #004d26; min-width: 72px; }
     th.input-col input[type="text"] {
       width: 100%; padding: 5px 8px; border-radius: 6px;
       border: none; font-size: 0.82rem; background: rgba(255,255,255,0.92);
@@ -182,12 +182,12 @@
     .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
     table { width: 100%; border-collapse: collapse; font-size: 0.88rem; min-width: 300px; }
     thead tr { background: var(--green); }
-    th { padding: 12px 10px; text-align: center; color: white; font-weight: 600; white-space: nowrap; font-size: 0.82rem; }
-    th.date-col { text-align: left; min-width: 90px; }
+    th { padding: 10px 6px; text-align: center; color: white; font-weight: 600; white-space: nowrap; font-size: 0.82rem; }
+    th.date-col { text-align: left; min-width: 76px; }
     tbody tr { transition: background 0.1s; }
     tbody tr:hover { background: #f9fafb; }
     tbody tr:last-child td { border-bottom: none; }
-    td { padding: 10px 10px; text-align: center; border-bottom: 1px solid #f0f0f0; }
+    td { padding: 8px 6px; text-align: center; border-bottom: 1px solid #f0f0f0; }
     td.date-cell { text-align: left; font-weight: 600; color: var(--text); white-space: nowrap; font-size: 0.85rem; }
     td.date-cell.is-best { color: var(--green); background: var(--green-light); }
     td.date-cell.is-best::before { content: '★ '; color: var(--gold); }
@@ -201,7 +201,7 @@
     .vote-btn.circle { color: #007a3d; }
     .vote-btn.triangle { color: var(--gold); }
     .vote-btn.cross { color: #c0392b; }
-    .point-cell { font-weight: 700; font-size: 0.95rem; min-width: 52px; }
+    .point-cell { font-weight: 700; font-size: 0.95rem; min-width: 36px; }
     .point-cell.is-best { color: var(--green); background: var(--green-light); }
     /* 確定日の強調表示 */
     tr.confirmed-row td { background: #fff8e6 !important; }
@@ -224,7 +224,7 @@
       transition: all 0.15s;
     }
     .reorder-btn:hover { background: rgba(255,255,255,0.15); color: white; }
-    .participant-th { min-width: 80px; font-size: 0.82rem; }
+    .participant-th { min-width: 56px; font-size: 0.82rem; }
     .edit-btn {
       display: inline-block; margin-top: 5px; font-size: 0.68rem;
       background: none; border: 1px solid rgba(255,255,255,0.5);
