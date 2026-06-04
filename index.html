@@ -167,7 +167,7 @@
       border: none; font-size: 0.82rem; background: rgba(255,255,255,0.92);
       color: var(--text); outline: none;
     }
-    td.input-col { background: #f5fdf8; border-left: 2px solid var(--green-mid); text-align: center; }
+    td.input-col { background: #f5fdf8; border-left: 2px solid var(--green-mid); text-align: center; white-space: nowrap; }
     .register-btn {
       width: 100%; padding: 8px 4px; background: var(--green); color: white;
       border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
@@ -193,8 +193,8 @@
     td.date-cell.is-best::before { content: '★ '; color: var(--gold); }
     .vote-btn {
       background: none; border: 2px solid transparent; border-radius: 6px;
-      font-size: 1.1rem; cursor: pointer; padding: 3px 5px;
-      opacity: 0.2; transition: all 0.15s;
+      font-size: 1.1rem; cursor: pointer; padding: 2px 3px;
+      opacity: 0.2; transition: all 0.15s; display: inline-block;
     }
     .vote-btn:hover { opacity: 0.6; transform: scale(1.1); }
     .vote-btn.selected { border-color: currentColor; opacity: 1; transform: scale(1.05); }
@@ -241,6 +241,7 @@
     }
     .del-btn.visible { display: inline-block; }
     .del-btn:hover { background: rgba(255,80,80,0.2); }
+    .vote-btns { display: flex; gap: 2px; justify-content: center; align-items: center; }
     /* ロック中の投票ボタン */
     td.locked .vote-btn { pointer-events: none; }
     td.locked .note-input { pointer-events: none; color: #aaa; border-color: transparent; }
@@ -1002,9 +1003,11 @@
       const cells = entries.map(([name, votes]) => buildVoteCell(name, i, votes[i] || '')).join('');
       const countStr = Number.isInteger(counts[i]) ? counts[i] : counts[i].toFixed(1);
       const inputCell = `<td class="input-col">
-        ${[['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,lbl,cls]) =>
-          `<button class="vote-btn ${cls}" data-new-idx="${i}" data-key="${key}">${lbl}</button>`
-        ).join('')}
+        <div class="vote-btns">
+          ${[['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,lbl,cls]) =>
+            `<button class="vote-btn ${cls}" data-new-idx="${i}" data-key="${key}">${lbl}</button>`
+          ).join('')}
+        </div>
       </td>`;
       const confirmBtn = isHost
         ? `<button class="confirm-btn ${isConfirmed?'confirmed':''}" data-date-idx="${i}">${isConfirmed?'✅ 確定中':'📌 確定'}</button>`
@@ -1026,9 +1029,10 @@
       ? `<span class="vote-display vote-display-${current}">${labelMap[current]}</span>`
       : `<span class="vote-display-empty">-</span>`;
     // 編集時用の全ボタン（初期非表示）
-    const btns = [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
-      `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}" style="display:none;">${label}</button>`
-    ).join('');
+    const btns = `<div class="vote-btns" style="display:none;">` +
+      [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
+        `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}">${label}</button>`
+      ).join('') + `</div>`;
     return `<td class="locked" data-col="${name}">${display}${btns}</td>`;
   }
 
@@ -1096,7 +1100,7 @@
           cells.forEach(td => {
             td.classList.add('locked');
             // ボタンを隠して表示ラベルを出す
-            td.querySelectorAll('.vote-btn').forEach(b => b.style.display = 'none');
+            td.querySelectorAll('.vote-btns').forEach(b => b.style.display = 'none');
             const colorMap = { o: '#007a3d', t: '#c8a84b', x: '#c0392b' };
             const labelMap = { o: '◯', t: '△', x: '✕' };
             const sel = td.querySelector('.vote-btn.selected');
@@ -1118,8 +1122,8 @@
           btn.textContent = '✅ 完了';
           cells.forEach(td => {
             td.classList.remove('locked');
-            td.querySelectorAll('.vote-display').forEach(el => el.style.display = 'none');
-            td.querySelectorAll('.vote-btn').forEach(b => b.style.display = 'inline-block');
+            td.querySelectorAll('.vote-display, .vote-display-empty').forEach(el => el.style.display = 'none');
+            td.querySelectorAll('.vote-btns').forEach(b => b.style.display = 'flex');
           });
           delBtn.classList.add('visible');
         }
