@@ -301,9 +301,10 @@
       border:1.5px solid var(--green) !important; cursor:pointer !important; font-weight:700 !important; }
     .btn-auto-disabled { background:#f0f0f0 !important; color:#aaa !important;
       border:1.5px solid #ddd !important; cursor:not-allowed !important; }
-    /* 時刻入力欄 */
-    .time-input { width:110px; padding:10px 8px; border:1.5px solid var(--border);
-      border-radius:8px; font-size:0.9rem; outline:none; background:#fafafa; }
+    /* 時刻プルダウン */
+    .time-input { width:110px; padding:8px 6px; border:1.5px solid var(--border);
+      border-radius:8px; font-size:0.9rem; outline:none; background:#fafafa; cursor:pointer; }
+    .time-input:focus { border-color:var(--green); background:white; }
     /* 投票記号表示 */
     .vote-display { font-size:1.2rem; font-weight:700; }
     .vote-display-o { color:#007a3d; }
@@ -388,7 +389,7 @@
     <div style="margin-bottom:10px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;">
       <input type="checkbox" id="useTime" style="width:16px;height:16px;accent-color:var(--green);cursor:pointer;">
       <label for="useTime" style="font-size:0.88rem;color:var(--text-muted);cursor:pointer;text-transform:none;letter-spacing:0;margin:0;">日付に時刻を追加する</label>
-      <input type="time" id="defaultTime" style="display:none;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;outline:none;background:#fafafa;accent-color:var(--green);">
+      <select id="defaultTime" style="display:none;padding:7px 10px;border:1.5px solid var(--border);border-radius:8px;font-size:0.9rem;outline:none;background:#fafafa;cursor:pointer;"></select>
       <span id="defaultTimeHint" style="display:none;font-size:0.78rem;color:var(--text-muted);">← 全候補日に一括適用（個別変更も可）</span>
     </div>
     <div id="dateList"></div>
@@ -643,6 +644,23 @@
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  // ── 時刻プルダウン生成 ───────────────────────────
+  function buildTimeOptions(sel) {
+    const blank = document.createElement('option');
+    blank.value = ''; blank.textContent = '-- 時刻 --';
+    sel.appendChild(blank);
+    for (let h = 9; h <= 23; h++) {
+      for (const m of ['00', '30']) {
+        if (h === 23 && m === '30') break;
+        const val = `${String(h).padStart(2,'0')}:${m}`;
+        const opt = document.createElement('option');
+        opt.value = val; opt.textContent = val;
+        sel.appendChild(opt);
+      }
+    }
+  }
+  buildTimeOptions(document.getElementById('defaultTime'));
+
   // ── 候補日UI ────────────────────────────────
 
   function addDateRow(value, time) {
@@ -667,11 +685,10 @@
     input.addEventListener('input', updateBadge);
     updateBadge();
 
-    // 時刻入力欄
-    const timeInput = document.createElement('input');
-    timeInput.type = 'time';
+    // 時刻選択プルダウン
+    const timeInput = document.createElement('select');
     timeInput.className = 'time-input';
-    // スタイルはCSS .time-input クラスで管理
+    buildTimeOptions(timeInput);
     const defaultTimeVal = document.getElementById('defaultTime').value;
     timeInput.value = time || defaultTimeVal || '';
     timeInput.style.display = document.getElementById('useTime').checked ? 'inline-block' : 'none';
@@ -713,7 +730,7 @@
     return Array.from(document.querySelectorAll('#dateList .date-row')).map(row => {
       const dateVal = row.querySelector('input[type=date]').value;
       if (!dateVal) return null;
-      const timeVal = useTime ? (row.querySelector('input[type=time]').value || '') : '';
+      const timeVal = useTime ? (row.querySelector('select.time-input')?.value || '') : '';
       return timeVal ? `${dateVal} ${timeVal}` : dateVal;
     }).filter(d => d !== null);
   }
