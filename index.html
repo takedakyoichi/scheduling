@@ -401,6 +401,13 @@
     <textarea id="eventMemo" placeholder="例：締切6/30、場所は有楽町駅周辺" rows="3" style="width:100%;padding:11px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;outline:none;color:var(--text);resize:vertical;background:#fafafa;font-family:inherit;"></textarea>
   </div>
 
+  <div class="field">
+    <label>参加者（任意）</label>
+    <p style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;font-weight:400;text-transform:none;letter-spacing:0;">事前に登録すると回答ページに列が作られます。未入力の場合は参加者が自分で追加できます。</p>
+    <div id="presetParticipantList"></div>
+    <button class="btn btn-ghost" id="addPresetParticipantBtn" style="margin-top:6px;">＋ 参加者を追加</button>
+  </div>
+
   <button class="btn btn-primary btn-full" id="createBtn" style="padding:14px;">
     🔗 イベントを作成してリンクを発行
   </button>
@@ -759,6 +766,32 @@
 
   document.getElementById('addDateBtn').addEventListener('click', () => addDateRow(''));
 
+  // ── 事前参加者UI ──────────────────────────────
+
+  function addPresetParticipantRow() {
+    const row = document.createElement('div');
+    row.className = 'date-row';
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.placeholder = '名前を入力';
+    input.style.flex = '1';
+    const btn = document.createElement('button');
+    btn.className = 'btn-remove';
+    btn.textContent = '✕';
+    btn.addEventListener('click', () => row.remove());
+    row.appendChild(input);
+    row.appendChild(btn);
+    document.getElementById('presetParticipantList').appendChild(row);
+    input.focus();
+  }
+
+  function getPresetParticipants() {
+    return Array.from(document.querySelectorAll('#presetParticipantList .date-row input'))
+      .map(el => el.value.trim()).filter(n => n);
+  }
+
+  document.getElementById('addPresetParticipantBtn').addEventListener('click', addPresetParticipantRow);
+
   // ── イベント作成 ──────────────────────────────
 
   document.getElementById('createBtn').addEventListener('click', async () => {
@@ -772,7 +805,16 @@
     const memo = document.getElementById('eventMemo').value.trim();
     const eventId = Math.random().toString(36).slice(2, 10);
     const hostKey = Math.random().toString(36).slice(2, 14);
-    await setDoc(doc(db, 'events', eventId), { name, dates, memo, participants: {}, hostKeys: [hostKey], confirmedDate: null, participantOrder: [] });
+    // 事前参加者を空の投票データとして初期化
+    const presetNames = getPresetParticipants();
+    const participants = {};
+    const now = Date.now();
+    presetNames.forEach((pName, i) => {
+      const votes = { _note: '', _joinedAt: now + i };
+      dates.forEach((_, di) => { votes[di] = ''; });
+      participants[pName] = votes;
+    });
+    await setDoc(doc(db, 'events', eventId), { name, dates, memo, participants, hostKeys: [hostKey], confirmedDate: null, participantOrder: presetNames });
     const base = `${location.origin}${location.pathname}`;
     const url = `${base}?event=${eventId}`;
     const hostUrl = `${base}?event=${eventId}&host=${hostKey}`;
