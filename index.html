@@ -850,6 +850,7 @@
   let isHost = false;
   let currentDates = [];
   let currentParticipantOrder = [];
+  let prevSettlePublished = false; // 精算公開状態の変化検知用
 
   if (eventId) {
     document.getElementById('setupCard').style.display = 'none';
@@ -900,6 +901,12 @@
       if (!isHost) {
         const viewWrap = document.getElementById('viewSettleWrap');
         if (viewWrap) viewWrap.style.display = data.settlePublished ? 'block' : 'none';
+
+        // 公開された瞬間（false→true）に自動で精算ページを開く
+        if (data.settlePublished && !prevSettlePublished) {
+          openSettlePage(data, true);
+        }
+        prevSettlePublished = !!data.settlePublished;
       }
 
       // 精算ページが開いていれば支払済み状態をリアルタイム同期
