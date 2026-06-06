@@ -1679,10 +1679,10 @@
 
   function buildSettleSummary(total, collected, count, perPerson) {
     return `<div class="settle-summary">
-      <div class="settle-summary-item"><div class="val">¥${total.toLocaleString()}</div><div class="lbl">合計金額</div></div>
-      <div class="settle-summary-item"><div class="val">¥${collected.toLocaleString()}</div><div class="lbl">個人合計</div></div>
+      <div class="settle-summary-item"><div class="val" id="summaryTotal">¥${total.toLocaleString()}</div><div class="lbl">合計金額</div></div>
+      <div class="settle-summary-item"><div class="val" id="summaryCollected">¥${collected.toLocaleString()}</div><div class="lbl">個人合計</div></div>
       <div class="settle-summary-item"><div class="val">${count}人</div><div class="lbl">参加人数</div></div>
-      <div class="settle-summary-item"><div class="val">¥${perPerson.toLocaleString()}</div><div class="lbl">均等割り（1人）</div></div>
+      <div class="settle-summary-item"><div class="val" id="summaryPerPerson">¥${perPerson.toLocaleString()}</div><div class="lbl">均等割り（1人）</div></div>
     </div>`;
   }
 
@@ -1751,20 +1751,31 @@
     `;
 
     function updateDiffs() {
+      const currentTotal = parseInt(document.getElementById('totalAmount')?.value) || total;
+      const currentCount = sortedNames.length;
+      const currentPerPerson = currentCount > 0 ? Math.ceil(currentTotal / currentCount) : 0;
+
+      let currentCollected = 0;
       sortedNames.forEach(name => {
         const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
         const diffEl = result.querySelector(`#diff-${CSS.escape(name)}`);
-        if (!diffEl) return;
-        const v = input ? (parseInt(input.value) || 0) : (savedAmounts[name] || perPerson);
-        const d = v - perPerson;
-        diffEl.textContent = d === 0 ? '±0' : d > 0 ? `+¥${d.toLocaleString()}` : `-¥${Math.abs(d).toLocaleString()}`;
-        diffEl.className = 'settle-diff' + (d > 0 ? ' over' : d < 0 ? ' under' : '');
+        const v = input ? (parseInt(input.value) || 0) : (savedAmounts[name] !== undefined ? savedAmounts[name] : perPerson);
+        currentCollected += v;
+        if (diffEl) {
+          const d = v - currentPerPerson;
+          diffEl.textContent = d === 0 ? '±0' : d > 0 ? `+¥${d.toLocaleString()}` : `-¥${Math.abs(d).toLocaleString()}`;
+          diffEl.className = 'settle-diff' + (d > 0 ? ' over' : d < 0 ? ' under' : '');
+        }
       });
-      const currentTotal = parseInt(document.getElementById('totalAmount')?.value) || total;
-      const currentCollected = sortedNames.reduce((sum, name) => {
-        const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
-        return sum + (input ? (parseInt(input.value) || 0) : (savedAmounts[name] || perPerson));
-      }, 0);
+
+      // サマリーボックスの個人合計・合計金額・均等割りをリアルタイム更新
+      const summaryCollected = result.querySelector('#summaryCollected');
+      const summaryTotal = result.querySelector('#summaryTotal');
+      const summaryPer = result.querySelector('#summaryPerPerson');
+      if (summaryCollected) summaryCollected.textContent = `¥${currentCollected.toLocaleString()}`;
+      if (summaryTotal) summaryTotal.textContent = `¥${currentTotal.toLocaleString()}`;
+      if (summaryPer) summaryPer.textContent = `¥${currentPerPerson.toLocaleString()}`;
+
       const banner = result.querySelector('#settleMatchBanner');
       if (banner) updateSettleBanner(banner, currentCollected - currentTotal, currentTotal, currentCollected);
     }
