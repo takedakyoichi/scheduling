@@ -1669,8 +1669,10 @@
   // 非公開に戻す
   document.getElementById('unpublishBtn')?.addEventListener('click', async () => {
     await updateDoc(doc(db, 'events', eventId), { settlePublished: false });
-    document.getElementById('publishedBadge').style.display = 'none';
     showToast('🔒 精算を非公開にしました');
+    // 精算ページをホスト編集可能な状態で再ロード
+    const snap = await getDoc(doc(db, 'events', eventId));
+    openSettlePage(snap.data(), false);
   });
 
   // ── 精算：ヘルパー関数 ──────────────────────────
