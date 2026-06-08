@@ -1242,9 +1242,14 @@
     const addDateHtml = isHost ? `
       <div id="addDateWrap">
         <label>＋ 日程を追加：</label>
-        <input type="date" id="addDateInput" style="width:auto;padding:7px 10px;font-size:0.85rem;margin-bottom:0;border:1.5px solid var(--border);border-radius:8px;background:#fafafa;">
-        <input type="time" id="addTimeInput" style="width:auto;padding:7px 10px;font-size:0.85rem;margin-bottom:0;border:1.5px solid var(--border);border-radius:8px;background:#fafafa;">
-        <button class="btn btn-secondary" id="hostAddDateBtn" style="white-space:nowrap;font-size:0.85rem;padding:7px 16px;">追加</button>
+        <div style="display:flex;gap:6px;align-items:center;flex-wrap:wrap;">
+          <input type="date" id="addDateFrom" style="width:auto;padding:7px 10px;font-size:0.85rem;margin-bottom:0;border:1.5px solid var(--border);border-radius:8px;background:#fafafa;">
+          <span style="font-size:0.85rem;color:var(--text-muted);">〜</span>
+          <input type="date" id="addDateTo" style="width:auto;padding:7px 10px;font-size:0.85rem;margin-bottom:0;border:1.5px solid var(--border);border-radius:8px;background:#fafafa;">
+          <input type="time" id="addTimeInput" style="width:auto;padding:7px 10px;font-size:0.85rem;margin-bottom:0;border:1.5px solid var(--border);border-radius:8px;background:#fafafa;" title="時刻（任意）">
+          <button class="btn btn-secondary" id="hostAddDateBtn" style="white-space:nowrap;font-size:0.85rem;padding:7px 16px;">追加</button>
+        </div>
+        <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">※ 同じ日を指定すると1日だけ追加されます。時刻は任意です。</div>
       </div>` : '';
 
     wrap.innerHTML = `
@@ -1363,31 +1368,50 @@
     const addDateBtn = wrap.querySelector('#hostAddDateBtn');
     if (addDateBtn) {
       addDateBtn.addEventListener('click', async () => {
-        const dateInput = wrap.querySelector('#addDateInput');
+        const fromInput = wrap.querySelector('#addDateFrom');
+        const toInput   = wrap.querySelector('#addDateTo');
         const timeInput = wrap.querySelector('#addTimeInput');
-        const dateVal = dateInput?.value;
-        if (!dateVal) { showToast('⚠️ 日付を選択してください'); return; }
-        const timeVal = timeInput?.value;
-        const newDateStr = timeVal ? `${dateVal} ${timeVal}` : dateVal;
+        const fromVal = fromInput?.value;
+        const toVal   = toInput?.value || fromVal; // 終了日未入力なら開始日と同じ
+        if (!fromVal) { showToast('⚠️ 開始日を選択してください'); return; }
+        if (toVal < fromVal) { showToast('⚠️ 終了日は開始日以降を選択してください'); return; }
+
+        // 開始〜終了の全日付を生成
+        const timeVal = timeInput?.value || '';
+        const candidates = [];
+        const cur = new Date(fromVal + 'T00:00:00');
+        const end = new Date(toVal   + 'T00:00:00');
+        while (cur <= end) {
+          const yyyy = cur.getFullYear();
+          const mm = String(cur.getMonth()+1).padStart(2,'0');
+          const dd = String(cur.getDate()).padStart(2,'0');
+          candidates.push(timeVal ? `${yyyy}-${mm}-${dd} ${timeVal}` : `${yyyy}-${mm}-${dd}`);
+          cur.setDate(cur.getDate() + 1);
+        }
 
         const snap = await getDoc(doc(db, 'events', eventId));
         const data = snap.data();
+        const existingDates = data.dates;
 
-        if (data.dates.includes(newDateStr)) {
-          showToast('⚠️ 同じ日程が既に登録されています'); return;
-        }
+        // 重複を除いて追加対象を絞る
+        const toAdd = candidates.filter(d => !existingDates.includes(d));
+        if (toAdd.length === 0) { showToast('⚠️ 指定した日程はすべて登録済みです'); return; }
 
-        const newDates = [...data.dates, newDateStr];
-        const newIdx = data.dates.length;
+        const newDates = [...existingDates, ...toAdd];
         const updates = { dates: newDates };
         // 既存参加者に空の回答を追加
-        for (const name of Object.keys(data.participants || {})) {
-          updates[`participants.${name}.${newIdx}`] = '';
-        }
+        const participantNames = Object.keys(data.participants || {});
+        toAdd.forEach((_, i) => {
+          const newIdx = existingDates.length + i;
+          participantNames.forEach(name => {
+            updates[`participants.${name}.${newIdx}`] = '';
+          });
+        });
 
         await updateDoc(doc(db, 'events', eventId), updates);
-        showToast('✅ 日程を追加しました');
-        if (dateInput) dateInput.value = '';
+        showToast(`✅ ${toAdd.length}件の日程を追加しました`);
+        if (fromInput) fromInput.value = '';
+        if (toInput)   toInput.value   = '';
         if (timeInput) timeInput.value = '';
       });
     }
