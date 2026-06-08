@@ -1097,14 +1097,12 @@
     const btns = [['o','◯','circle'],['t','△','triangle'],['x','✕','cross']].map(([key,label,cls]) =>
       `<button class="vote-btn ${cls} ${current===key?'selected':''}" data-name="${name}" data-idx="${idx}" data-key="${key}">${label}</button>`
     ).join('');
-    if (isPreset) {
-      // 未回答プリセット：最初からボタンを表示（ロックなし）
-      return `<td data-col="${name}" data-preset="1"><div class="vote-btns">${btns}</div></td>`;
+    // プリセット（全未回答）または未回答セル（ホストが後から追加した日程）：ボタンを直接表示
+    if (isPreset || !current) {
+      return `<td data-col="${name}"${isPreset?' data-preset="1"':''}><div class="vote-btns">${btns}</div></td>`;
     }
-    // 通常：ロック表示
-    const display = current
-      ? `<span class="vote-display vote-display-${current}">${labelMap[current]}</span>`
-      : `<span class="vote-display-empty">-</span>`;
+    // 回答済み：ロック表示
+    const display = `<span class="vote-display vote-display-${current}">${labelMap[current]}</span>`;
     return `<td class="locked" data-col="${name}">${display}<div class="vote-btns" style="display:none;">${btns}</div></td>`;
   }
 
@@ -1232,10 +1230,10 @@
 
     const counts = calcCounts(dates, allEntries);
 
-    // 各列の登録ボタン行（プリセット参加者は個別ボタン）
+    // 各列の登録ボタン行（未回答の日程がある参加者に表示）
     const registerCells = allEntries.map(([name, votes]) => {
-      const isPreset = dates.every((_, di) => !votes[di]);
-      return isPreset
+      const hasUnAnswered = dates.some((_, di) => !votes[di]);
+      return hasUnAnswered
         ? `<td style="text-align:center;padding:4px 6px;background:#f5fdf8;">
             <button class="register-btn preset-register-btn" data-name="${name}">登録する</button>
            </td>`
