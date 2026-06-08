@@ -1376,8 +1376,19 @@
         if (!fromVal) { showToast('⚠️ 開始日を選択してください'); return; }
         if (toVal < fromVal) { showToast('⚠️ 終了日は開始日以降を選択してください'); return; }
 
+        const snap = await getDoc(doc(db, 'events', eventId));
+        const data = snap.data();
+        const existingDates = data.dates;
+
+        // 時刻未指定の場合、既存日程の時刻を流用（全日程で共通の時刻があれば）
+        let timeVal = timeInput?.value || '';
+        if (!timeVal) {
+          const existingTimes = existingDates.map(d => d.includes(' ') ? d.split(' ')[1] : '');
+          const uniqueTimes = [...new Set(existingTimes)];
+          if (uniqueTimes.length === 1 && uniqueTimes[0]) timeVal = uniqueTimes[0];
+        }
+
         // 開始〜終了の全日付を生成
-        const timeVal = timeInput?.value || '';
         const candidates = [];
         const cur = new Date(fromVal + 'T00:00:00');
         const end = new Date(toVal   + 'T00:00:00');
@@ -1388,10 +1399,6 @@
           candidates.push(timeVal ? `${yyyy}-${mm}-${dd} ${timeVal}` : `${yyyy}-${mm}-${dd}`);
           cur.setDate(cur.getDate() + 1);
         }
-
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const data = snap.data();
-        const existingDates = data.dates;
 
         // 重複を除いて追加対象を絞る
         const toAdd = candidates.filter(d => !existingDates.includes(d));
