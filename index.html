@@ -1951,7 +1951,7 @@
       if (document.getElementById('bankName')) document.getElementById('bankName').value = bankInfo.name || '';
       if (document.getElementById('bankBranchCode')) {
         document.getElementById('bankBranchCode').value = bankInfo.branchCode || '';
-        lookupBranchName();
+        if (typeof lookupBranchName === 'function') lookupBranchName();
         // 自動取得できなかった場合は保存済み支店名を手動欄にセット
         const nameInput = document.getElementById('bankBranch');
         if (nameInput && !nameInput.value) nameInput.value = bankInfo.branch || '';
