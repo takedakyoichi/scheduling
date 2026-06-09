@@ -552,10 +552,23 @@
     <button id="backToEventBtn" style="background:none;border:1px solid var(--border);border-radius:4px;padding:4px 12px;font-size:0.8rem;color:var(--text-muted);cursor:pointer;">← 回答画面に戻る</button>
   </div>
 
-  <!-- 合計金額入力 -->
-  <div class="field">
-    <label>合計金額（円）</label>
-    <input type="number" id="totalAmount" placeholder="例：25000" min="0" style="font-size:1.1rem;">
+  <!-- 何次会・合計金額 -->
+  <div class="field" id="partiesField">
+    <div style="display:flex;align-items:center;gap:12px;margin-bottom:14px;" id="partiesCountRow">
+      <label style="margin:0;white-space:nowrap;">何次会まで</label>
+      <select id="partiesCount" style="width:auto;padding:8px 14px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;outline:none;background:#fafafa;color:var(--text);cursor:pointer;">
+        <option value="1">1次会</option>
+        <option value="2">2次会</option>
+        <option value="3">3次会</option>
+        <option value="4">4次会</option>
+        <option value="5">5次会</option>
+      </select>
+    </div>
+    <div id="partyAmountsWrap"></div>
+    <div id="totalAmountDisplay" style="margin-top:10px;padding:10px 16px;background:var(--green-light);border:1.5px solid var(--green-mid);border-radius:8px;font-size:1rem;font-weight:700;color:var(--green);display:flex;justify-content:space-between;align-items:center;">
+      <span>合計</span><span id="totalAmountValue">¥0</span>
+    </div>
+    <input type="hidden" id="totalAmount">
   </div>
 
   <!-- 振込先口座 -->
@@ -1861,8 +1874,14 @@
     const badge = document.getElementById('publishedBadge');
     if (badge) badge.style.display = published ? 'block' : 'none';
 
-    document.getElementById('totalAmount').value = settle.total || '';
-    document.getElementById('totalAmount').disabled = readOnly;
+    // 何次会・金額入力UI
+    const partiesCountRow = document.getElementById('partiesCountRow');
+    const partyCount = settle.partyCount || 1;
+    const partyAmounts = settle.partyAmounts || (settle.total ? [settle.total] : []);
+    if (partiesCountRow) partiesCountRow.style.display = readOnly ? 'none' : 'flex';
+    const partiesCountEl = document.getElementById('partiesCount');
+    if (partiesCountEl) partiesCountEl.value = partyCount;
+    buildPartyAmountsUI(partyCount, partyAmounts, readOnly);
 
     // 口座情報の表示
     const bankWrap = document.getElementById('bankInfoWrap');
@@ -1912,11 +1931,10 @@
     document.getElementById('viewCard').style.display = 'block';
   });
 
-  document.getElementById('totalAmount')?.addEventListener('input', () => {
-    const total = parseInt(document.getElementById('totalAmount').value) || 0;
-    // 手動変更前は {} を渡して均等割をデフォルト表示
-    const amounts = amountsCustomized ? getCurrentAmounts() : {};
-    renderSettle(settleNames, total, amounts, getCurrentPaid(), false);
+  // 何次会セレクタ変更
+  document.getElementById('partiesCount')?.addEventListener('change', () => {
+    const count = parseInt(document.getElementById('partiesCount').value);
+    buildPartyAmountsUI(count, [], false);
   });
 
   function getCurrentAmounts() {
@@ -1937,7 +1955,9 @@
 
   // 参加者に公開
   document.getElementById('publishSettleBtn')?.addEventListener('click', async () => {
-    const total = parseInt(document.getElementById('totalAmount').value) || 0;
+    const partyCount = parseInt(document.getElementById('partiesCount')?.value) || 1;
+    const partyAmounts = Array.from(document.querySelectorAll('.party-amount-input')).map(el => parseInt(el.value) || 0);
+    const total = partyAmounts.reduce((s, v) => s + v, 0);
     const amounts = getCurrentAmounts();
     const paid = getCurrentPaid();
     const bankInfo = {
@@ -1947,7 +1967,7 @@
       account: document.getElementById('bankAccount')?.value.trim() || '',
     };
     await updateDoc(doc(db, 'events', eventId), {
-      settle: { total, amounts, paid, bankInfo },
+      settle: { partyCount, partyAmounts, total, amounts, paid, bankInfo },
       settlePublished: true
     });
     document.getElementById('publishedBadge').style.display = 'block';
@@ -1962,6 +1982,50 @@
     const snap = await getDoc(doc(db, 'events', eventId));
     openSettlePage(snap.data(), false);
   });
+
+  // ── 精算：何次会入力UI ────────────────────────────
+
+  function buildPartyAmountsUI(count, savedAmounts, readOnly) {
+    const wrap = document.getElementById('partyAmountsWrap');
+    if (!wrap) return;
+    wrap.innerHTML = Array.from({ length: count }, (_, i) => {
+      const amount = savedAmounts[i] !== undefined ? savedAmounts[i] : '';
+      if (readOnly) {
+        return `<div style="display:flex;align-items:center;justify-content:space-between;padding:8px 14px;background:#fafafa;border:1px solid var(--border);border-radius:8px;margin-bottom:6px;">
+          <span style="font-size:0.9rem;font-weight:600;color:var(--text-muted);">${i+1}次会</span>
+          <span style="font-size:1rem;font-weight:700;color:var(--text);">¥${(amount||0).toLocaleString()}</span>
+        </div>`;
+      }
+      return `<div style="display:flex;align-items:center;gap:10px;margin-bottom:8px;">
+        <label style="font-size:0.88rem;font-weight:600;color:var(--text-muted);min-width:48px;margin:0;white-space:nowrap;">${i+1}次会</label>
+        <input type="number" class="party-amount-input" data-idx="${i}"
+          value="${amount}" placeholder="金額（円）" min="0"
+          style="flex:1;padding:9px 12px;border:1.5px solid var(--border);border-radius:8px;font-size:0.95rem;outline:none;background:#fafafa;">
+        <span style="font-size:0.82rem;color:var(--text-muted);white-space:nowrap;">円</span>
+      </div>`;
+    }).join('');
+
+    if (!readOnly) {
+      wrap.querySelectorAll('.party-amount-input').forEach(input => {
+        input.addEventListener('input', updatePartyTotal);
+      });
+    }
+    updatePartyTotal();
+  }
+
+  function updatePartyTotal() {
+    const inputs = document.querySelectorAll('.party-amount-input');
+    const total = Array.from(inputs).reduce((sum, el) => sum + (parseInt(el.value) || 0), 0);
+    const totalInput = document.getElementById('totalAmount');
+    if (totalInput) totalInput.value = total;
+    const totalVal = document.getElementById('totalAmountValue');
+    if (totalVal) totalVal.textContent = `¥${total.toLocaleString()}`;
+    // 精算テーブルをリアルタイム更新
+    if (settleNames.length > 0) {
+      const amounts = amountsCustomized ? getCurrentAmounts() : {};
+      renderSettle(settleNames, total, amounts, getCurrentPaid(), settleReadOnly);
+    }
+  }
 
   // ── 精算：ヘルパー関数 ──────────────────────────
 
