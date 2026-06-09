@@ -1967,12 +1967,13 @@
       (settle.amounts ? Object.fromEntries(Object.entries(settle.amounts).map(([k,v]) => [k,[v]])) : {});
     amountsCustomized = !!(settle.partyPersonAmounts && Object.keys(settle.partyPersonAmounts).length);
     buildPartyAmountsUI(sPartyCount, sPartyAmounts, sPartyNames, readOnly);
-    // readOnly時はinputがないため合計を直接セット
+    // readOnly時はinputがないため合計を直接セット（partyAmountsの合算を使う）
+    const computedTotal = sPartyAmounts.reduce((s, v) => s + (v || 0), 0);
     if (readOnly) {
       const totalVal = document.getElementById('totalAmountValue');
-      if (totalVal) totalVal.textContent = `¥${(settle.total || 0).toLocaleString()}`;
+      if (totalVal) totalVal.textContent = `¥${computedTotal.toLocaleString()}`;
     }
-    renderSettle(settleNames, settle.total || 0, sPartyCount, sPartyAmounts, sPartyNames, sPartyPersonAmounts, settle.paid || {}, readOnly);
+    renderSettle(settleNames, computedTotal, sPartyCount, sPartyAmounts, sPartyNames, sPartyPersonAmounts, settle.paid || {}, readOnly);
   }
 
   // ホスト：精算ページへ
