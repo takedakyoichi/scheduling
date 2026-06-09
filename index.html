@@ -1429,6 +1429,30 @@
         <div style="font-size:0.75rem;color:var(--text-muted);margin-top:4px;">※ 同じ日を指定すると1日だけ追加されます。時刻は任意です。</div>
       </div>` : '';
 
+    // ── 再描画前に入力中の状態を保存 ──
+    const savedInput = {
+      newName: wrap.querySelector('#newName')?.value || '',
+      newNote: wrap.querySelector('#newNote')?.value || '',
+      newVotes: {},      // dateIdx -> key  (新規入力列)
+      pendingVotes: {},  // name -> dateIdx -> key  (未登録の未回答セル)
+    };
+    dates.forEach((_, i) => {
+      const sel = wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`);
+      if (sel) savedInput.newVotes[i] = sel.dataset.key;
+    });
+    allEntries.forEach(([name, votes]) => {
+      const hasUnAnswered = dates.some((_, di) => !votes[di]);
+      if (!hasUnAnswered) return;
+      dates.forEach((_, i) => {
+        if (votes[i]) return; // 回答済みはスキップ
+        const sel = wrap.querySelector(`.vote-btn[data-name="${CSS.escape(name)}"][data-idx="${i}"].selected`);
+        if (sel) {
+          if (!savedInput.pendingVotes[name]) savedInput.pendingVotes[name] = {};
+          savedInput.pendingVotes[name][i] = sel.dataset.key;
+        }
+      });
+    });
+
     wrap.innerHTML = `
       <div class="table-wrap">
         <table>
@@ -1445,6 +1469,32 @@
         </table>
       </div>
       ${addDateHtml}`;
+
+    // ── 再描画後に入力状態を復元 ──
+    if (savedInput.newName) {
+      const nameInput = wrap.querySelector('#newName');
+      if (nameInput) nameInput.value = savedInput.newName;
+    }
+    if (savedInput.newNote) {
+      const noteInput = wrap.querySelector('#newNote');
+      if (noteInput) noteInput.value = savedInput.newNote;
+    }
+    Object.entries(savedInput.newVotes).forEach(([idx, key]) => {
+      const btn = wrap.querySelector(`.vote-btn[data-new-idx="${idx}"][data-key="${key}"]`);
+      if (btn) {
+        wrap.querySelectorAll(`.vote-btn[data-new-idx="${idx}"]`).forEach(b => b.classList.remove('selected'));
+        btn.classList.add('selected');
+      }
+    });
+    Object.entries(savedInput.pendingVotes).forEach(([name, votes]) => {
+      Object.entries(votes).forEach(([idx, key]) => {
+        const btn = wrap.querySelector(`.vote-btn[data-name="${CSS.escape(name)}"][data-idx="${idx}"][data-key="${key}"]`);
+        if (btn) {
+          wrap.querySelectorAll(`.vote-btn[data-name="${CSS.escape(name)}"][data-idx="${idx}"]`).forEach(b => b.classList.remove('selected'));
+          btn.classList.add('selected');
+        }
+      });
+    });
 
     attachVoteHandlers(wrap);
     attachNoteHandlers(wrap);
