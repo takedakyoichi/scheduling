@@ -338,6 +338,9 @@
       transition:all 0.15s; white-space:nowrap;
     }
     .date-del-btn:hover { background:rgba(255,80,80,0.25); color:white; }
+    /* 認証エリア */
+    #signInBtn { transition: border-color 0.2s, box-shadow 0.2s; }
+    #signInBtn:hover { border-color: var(--green); box-shadow: 0 0 0 2px rgba(0,105,52,0.1); }
     /* マイイベント一覧 */
     .my-event-item {
       display:flex; align-items:center; gap:10px;
@@ -368,6 +371,16 @@
 <div class="header">
   <div class="header-inner">
     <div class="header-logo">調整くん</div>
+    <div id="authArea" style="margin-left:auto;display:flex;align-items:center;gap:10px;">
+      <div id="authUser" style="display:none;align-items:center;gap:8px;">
+        <img id="authAvatar" src="" alt="" style="width:28px;height:28px;border-radius:50%;object-fit:cover;border:2px solid var(--green-mid);">
+        <span id="authName" style="font-size:0.8rem;color:var(--text-muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;"></span>
+        <button id="signOutBtn" style="background:none;border:1px solid var(--border);border-radius:4px;padding:3px 10px;font-size:0.75rem;color:var(--text-muted);cursor:pointer;">ログアウト</button>
+      </div>
+      <button id="signInBtn" style="display:none;background:white;border:1.5px solid var(--border);border-radius:6px;padding:5px 14px;font-size:0.82rem;color:var(--text);cursor:pointer;display:flex;align-items:center;gap:6px;font-weight:600;">
+        <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/auth/google.svg" style="width:16px;height:16px;"> Googleでログイン
+      </button>
+    </div>
   </div>
 </div>
 
@@ -609,7 +622,8 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDkczQ9y3u3XaPgWtwBkXm0wwt3bsOGsZ4",
@@ -622,6 +636,8 @@
 
   const app = initializeApp(firebaseConfig);
   const db = getFirestore(app);
+  const auth = getAuth(app);
+  let currentUser = null;
 
   // ── ユーティリティ ──────────────────────────
 
@@ -830,68 +846,120 @@
 
   document.getElementById('addPresetParticipantBtn').addEventListener('click', addPresetParticipantRow);
 
-  // ── マイイベント管理（localStorage） ───────────────
+  // ── マイイベント管理（Firestore アカウントベース） ──────
 
-  const MY_EVENTS_KEY = 'chouseikun_my_events';
-
-  function loadMyEvents() {
-    try { return JSON.parse(localStorage.getItem(MY_EVENTS_KEY)) || []; }
-    catch { return []; }
+  // Firestoreパス: users/{uid}/events/{eventId}
+  function userEventsRef(uid) {
+    return collection(db, 'users', uid, 'events');
   }
 
-  function saveMyEvents(events) {
-    localStorage.setItem(MY_EVENTS_KEY, JSON.stringify(events));
+  async function addMyEvent(eventId, hostKey, name) {
+    if (!currentUser) return;
+    const ref = doc(db, 'users', currentUser.uid, 'events', eventId);
+    await setDoc(ref, { hostKey, name, createdAt: Date.now() }, { merge: true });
   }
 
-  function addMyEvent(eventId, hostKey, name) {
-    const events = loadMyEvents();
-    // 同一IDがあれば上書き（名前変更対応）
-    const idx = events.findIndex(e => e.eventId === eventId);
-    const entry = { eventId, hostKey, name, createdAt: Date.now() };
-    if (idx >= 0) events[idx] = entry; else events.unshift(entry);
-    saveMyEvents(events);
+  async function removeMyEvent(eventId) {
+    if (!currentUser) return;
+    await deleteDoc(doc(db, 'users', currentUser.uid, 'events', eventId));
   }
 
-  function renderMyEvents() {
-    const events = loadMyEvents();
+  async function renderMyEvents() {
     const card = document.getElementById('myEventsCard');
     const list = document.getElementById('myEventsList');
     if (!card || !list) return;
-    if (events.length === 0) { card.style.display = 'none'; return; }
+
+    if (!currentUser) {
+      card.style.display = 'none';
+      document.getElementById('setupCard').style.display = 'block';
+      return;
+    }
+
+    list.innerHTML = '<div style="text-align:center;color:#bbb;padding:16px;font-size:0.85rem;">読み込み中…</div>';
     card.style.display = 'block';
+    document.getElementById('setupCard').style.display = 'none';
+
+    const snap = await getDocs(userEventsRef(currentUser.uid));
+    const events = snap.docs
+      .map(d => ({ eventId: d.id, ...d.data() }))
+      .sort((a, b) => (b.createdAt || 0) - (a.createdAt || 0));
+
+    if (events.length === 0) {
+      list.innerHTML = '<div style="text-align:center;color:#bbb;padding:16px;font-size:0.85rem;">まだイベントがありません</div>';
+      return;
+    }
+
     const base = `${location.origin}${location.pathname}`;
     list.innerHTML = events.map(e => {
-      const d = new Date(e.createdAt);
+      const d = new Date(e.createdAt || 0);
       const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} 作成`;
-      return `<div class="my-event-item" data-id="${e.eventId}">
+      return `<div class="my-event-item">
         <div class="my-event-info">
-          <div class="my-event-name">${e.name.replace(/</g,'&lt;')}</div>
+          <div class="my-event-name">${(e.name||'').replace(/</g,'&lt;')}</div>
           <div class="my-event-meta">${dateStr}</div>
         </div>
         <a class="btn btn-secondary my-event-open" href="${base}?event=${e.eventId}&host=${e.hostKey}">開く</a>
         <button class="my-event-remove" data-id="${e.eventId}" title="一覧から削除">✕</button>
       </div>`;
     }).join('');
+
     list.querySelectorAll('.my-event-remove').forEach(btn => {
-      btn.addEventListener('click', () => {
-        const updated = loadMyEvents().filter(e => e.eventId !== btn.dataset.id);
-        saveMyEvents(updated);
+      btn.addEventListener('click', async () => {
+        if (!confirm('この一覧から削除しますか？（イベント自体は削除されません）')) return;
+        await removeMyEvent(btn.dataset.id);
         renderMyEvents();
       });
     });
   }
 
+  // ── Firebase Auth ───────────────────────────────
+
+  onAuthStateChanged(auth, async user => {
+    currentUser = user;
+    const signInBtn  = document.getElementById('signInBtn');
+    const signOutBtn = document.getElementById('signOutBtn');
+    const authUser   = document.getElementById('authUser');
+
+    if (user) {
+      // ログイン済み
+      signInBtn.style.display  = 'none';
+      authUser.style.display   = 'flex';
+      document.getElementById('authName').textContent   = user.displayName || user.email || '';
+      document.getElementById('authAvatar').src = user.photoURL || '';
+      document.getElementById('authAvatar').style.display = user.photoURL ? 'block' : 'none';
+    } else {
+      // 未ログイン
+      signInBtn.style.display  = 'flex';
+      authUser.style.display   = 'none';
+    }
+
+    // トップページのみマイイベントを再描画
+    if (!new URLSearchParams(location.search).get('event')) {
+      renderMyEvents();
+    }
+  });
+
+  document.getElementById('signInBtn').addEventListener('click', async () => {
+    const provider = new GoogleAuthProvider();
+    try {
+      await signInWithPopup(auth, provider);
+    } catch (e) {
+      showToast('⚠️ ログインに失敗しました');
+      console.error(e);
+    }
+  });
+
+  document.getElementById('signOutBtn').addEventListener('click', async () => {
+    await signOut(auth);
+    showToast('👋 ログアウトしました');
+  });
+
   // 初期表示（?event= なしのトップページのみ）
   if (!new URLSearchParams(location.search).get('event')) {
-    renderMyEvents();
     document.getElementById('newEventBtn')?.addEventListener('click', () => {
       document.getElementById('myEventsCard').style.display = 'none';
       document.getElementById('setupCard').style.display = 'block';
     });
-    // マイイベントがあれば作成フォームを隠してマイイベント一覧を先に表示
-    if (loadMyEvents().length > 0) {
-      document.getElementById('setupCard').style.display = 'none';
-    }
   }
 
   // ── イベント作成 ──────────────────────────────
