@@ -1961,7 +1961,13 @@
       if (document.getElementById('bankAccount')) document.getElementById('bankAccount').value = bankInfo.account || '';
     }
 
-    renderSettle(settleNames, settle.total || 0, settle.amounts || {}, settle.paid || {}, readOnly);
+    const sPartyCount   = settle.partyCount   || 1;
+    const sPartyAmounts = settle.partyAmounts || [settle.total || 0];
+    // 旧フォーマット(amounts)からの変換
+    const sPartyPersonAmounts = settle.partyPersonAmounts ||
+      (settle.amounts ? Object.fromEntries(Object.entries(settle.amounts).map(([k,v]) => [k,[v]])) : {});
+    amountsCustomized = !!(settle.partyPersonAmounts && Object.keys(settle.partyPersonAmounts).length);
+    renderSettle(settleNames, settle.total || 0, sPartyCount, sPartyAmounts, sPartyPersonAmounts, settle.paid || {}, readOnly);
   }
 
   // ホスト：精算ページへ
@@ -1990,7 +1996,10 @@
   function getCurrentAmounts() {
     const amounts = {};
     document.querySelectorAll('.settle-amount-input').forEach(el => {
-      amounts[el.dataset.name] = parseInt(el.value) || 0;
+      const name = el.dataset.name;
+      const pi = parseInt(el.dataset.party || '0');
+      if (!amounts[name]) amounts[name] = [];
+      amounts[name][pi] = parseInt(el.value) || 0;
     });
     return amounts;
   }
@@ -2008,7 +2017,7 @@
     const partyCount = parseInt(document.getElementById('partiesCount')?.value) || 1;
     const partyAmounts = Array.from(document.querySelectorAll('.party-amount-input')).map(el => parseInt(el.value) || 0);
     const total = partyAmounts.reduce((s, v) => s + v, 0);
-    const amounts = getCurrentAmounts();
+    const partyPersonAmounts = getCurrentAmounts();
     const paid = getCurrentPaid();
     const bankInfo = {
       name: document.getElementById('bankName')?.value.trim() || '',
@@ -2017,7 +2026,7 @@
       account: document.getElementById('bankAccount')?.value.trim() || '',
     };
     await updateDoc(doc(db, 'events', eventId), {
-      settle: { partyCount, partyAmounts, total, amounts, paid, bankInfo },
+      settle: { partyCount, partyAmounts, partyPersonAmounts, total, paid, bankInfo },
       settlePublished: true
     });
     document.getElementById('publishedBadge').style.display = 'block';
@@ -2064,16 +2073,18 @@
   }
 
   function updatePartyTotal() {
-    const inputs = document.querySelectorAll('.party-amount-input');
-    const total = Array.from(inputs).reduce((sum, el) => sum + (parseInt(el.value) || 0), 0);
+    const inputs = Array.from(document.querySelectorAll('.party-amount-input'));
+    const partyAmountsArr = [];
+    inputs.forEach(el => { partyAmountsArr[parseInt(el.dataset.idx)] = parseInt(el.value) || 0; });
+    const total = partyAmountsArr.reduce((s, v) => s + (v || 0), 0);
+    const partyCount = partyAmountsArr.length || 1;
     const totalInput = document.getElementById('totalAmount');
     if (totalInput) totalInput.value = total;
     const totalVal = document.getElementById('totalAmountValue');
     if (totalVal) totalVal.textContent = `¥${total.toLocaleString()}`;
-    // 精算テーブルをリアルタイム更新
     if (settleNames.length > 0) {
       const amounts = amountsCustomized ? getCurrentAmounts() : {};
-      renderSettle(settleNames, total, amounts, getCurrentPaid(), settleReadOnly);
+      renderSettle(settleNames, total, partyCount, partyAmountsArr, amounts, getCurrentPaid(), settleReadOnly);
     }
   }
 
@@ -2097,31 +2108,42 @@
     </div>`;
   }
 
-  function buildSettleTable(sortedNames, savedAmounts, savedPaid, perPerson, readOnly) {
+  function buildSettleTable(sortedNames, partyCount, perPartyPerson, savedPartyPersonAmounts, savedPaid, readOnly) {
+    const overallPerPerson = perPartyPerson.reduce((s, v) => s + v, 0);
+    const partyHeaders = Array.from({length: partyCount}, (_, i) =>
+      `<th>${i+1}次会<br><small style="font-weight:normal;opacity:0.75;font-size:0.72rem;">均等¥${perPartyPerson[i].toLocaleString()}</small></th>`
+    ).join('');
+
     const rows = sortedNames.map(name => {
-      const amount = savedAmounts[name] !== undefined ? savedAmounts[name] : perPerson;
+      const pAmounts = savedPartyPersonAmounts[name] || perPartyPerson.slice();
+      const personTotal = pAmounts.reduce((s, v) => s + (v || 0), 0);
       const isPaid = savedPaid[name] || false;
-      const paidCell = `<div class="settle-paid">
-        <input type="checkbox" id="paid-${CSS.escape(name)}" class="paid-check" data-name="${name}" ${isPaid ? 'checked' : ''}>
+
+      const partyCells = Array.from({length: partyCount}, (_, i) => {
+        const v = pAmounts[i] !== undefined ? pAmounts[i] : perPartyPerson[i];
+        if (readOnly) return `<td class="settle-amount-cell">¥${(v||0).toLocaleString()}</td>`;
+        return `<td><input type="number" class="settle-amount-input" data-name="${name}" data-party="${i}" value="${v||0}" min="0" style="width:90px;padding:5px 8px;border:1.5px solid var(--border);border-radius:6px;font-size:0.88rem;outline:none;text-align:right;"></td>`;
+      }).join('');
+
+      const totalCell = `<td class="settle-amount-cell" id="ptotal-${CSS.escape(name)}" style="font-weight:700;color:var(--green);">¥${personTotal.toLocaleString()}</td>`;
+      const diffCell  = readOnly ? '' : `<td class="settle-diff" id="diff-${CSS.escape(name)}"></td>`;
+      const paidCell  = `<div class="settle-paid">
+        <input type="checkbox" id="paid-${CSS.escape(name)}" class="paid-check" data-name="${name}" ${isPaid?'checked':''}>
         <label for="paid-${CSS.escape(name)}">支払済み</label>
       </div>`;
-      if (readOnly) {
-        return `<tr id="row-${CSS.escape(name)}" class="${isPaid ? 'paid' : ''}">
-          <td class="settle-name">${name}</td>
-          <td class="settle-amount-cell">¥${amount.toLocaleString()}</td>
-          <td>${paidCell}</td>
-        </tr>`;
-      }
-      return `<tr id="row-${CSS.escape(name)}" class="${isPaid ? 'paid' : ''}">
+
+      return `<tr id="row-${CSS.escape(name)}" class="${isPaid?'paid':''}">
         <td class="settle-name">${name}</td>
-        <td><input type="number" class="settle-amount-input" data-name="${name}" value="${amount}" min="0"></td>
-        <td class="settle-diff" id="diff-${CSS.escape(name)}"></td>
+        ${partyCells}
+        ${totalCell}
+        ${diffCell}
         <td>${paidCell}</td>
       </tr>`;
     }).join('');
+
     return `<table class="settle-table">
       <thead><tr>
-        <th>名前</th><th>金額（円）</th>
+        <th>名前</th>${partyHeaders}<th>合計</th>
         ${readOnly ? '' : '<th>均等との差</th>'}
         <th>状態</th>
       </tr></thead>
@@ -2137,58 +2159,65 @@
       : `⚠️ 個人合計（¥${collected.toLocaleString()}）と合計金額（¥${total.toLocaleString()}）が${diff > 0 ? `¥${diff.toLocaleString()} 超過` : `¥${Math.abs(diff).toLocaleString()} 不足`}しています`;
   }
 
-  function renderSettle(names, total, savedAmounts, savedPaid, readOnly) {
+  function renderSettle(names, total, partyCount, partyAmounts, savedPartyPersonAmounts, savedPaid, readOnly) {
     const count = names.length;
-    const perPerson = count > 0 ? Math.ceil(total / count) : 0;
+    const perPartyPerson = partyAmounts.map(a => count > 0 ? Math.ceil(a / count) : 0);
+    const overallPerPerson = perPartyPerson.reduce((s, v) => s + v, 0);
     const result = document.getElementById('settleResult');
     if (count === 0) { result.innerHTML = '<p class="empty-msg">参加者がいません</p>'; return; }
 
-    const sortedNames = [...names].sort((a, b) => {
-      const va = savedAmounts[a] !== undefined ? savedAmounts[a] : perPerson;
-      const vb = savedAmounts[b] !== undefined ? savedAmounts[b] : perPerson;
-      return vb - va;
-    });
-
-    const collected = names.reduce((sum, name) => {
-      const v = savedAmounts[name] !== undefined ? savedAmounts[name] : perPerson;
-      return sum + v;
-    }, 0);
+    const getPersonTotal = name => {
+      const pa = savedPartyPersonAmounts[name] || perPartyPerson.slice();
+      return pa.reduce((s, v) => s + (v || 0), 0);
+    };
+    const sortedNames = [...names].sort((a, b) => getPersonTotal(b) - getPersonTotal(a));
+    const collected = names.reduce((sum, name) => sum + getPersonTotal(name), 0);
 
     result.innerHTML = `
       ${buildSettleMatchBanner(collected - total, total, collected)}
-      ${buildSettleSummary(total, collected, count, perPerson)}
-      ${buildSettleTable(sortedNames, savedAmounts, savedPaid, perPerson, readOnly)}
+      ${buildSettleSummary(total, collected, count, overallPerPerson)}
+      ${buildSettleTable(sortedNames, partyCount, perPartyPerson, savedPartyPersonAmounts, savedPaid, readOnly)}
       ${readOnly ? '' : '<button class="btn btn-secondary btn-full" id="resetAmountsBtn">🔄 均等割りに戻す</button>'}
     `;
 
     function updateDiffs() {
-      const currentTotal = parseInt(document.getElementById('totalAmount')?.value) || total;
-      const currentCount = sortedNames.length;
-      const currentPerPerson = currentCount > 0 ? Math.ceil(currentTotal / currentCount) : 0;
+      // 現在の次会ごとの合計を取得（外側のparty-amount-inputから）
+      const curPartyAmounts = partyAmounts.map((orig, pi) => {
+        const inp = document.querySelector(`.party-amount-input[data-idx="${pi}"]`);
+        return inp ? (parseInt(inp.value) || 0) : orig;
+      });
+      const curTotal = curPartyAmounts.reduce((s, v) => s + v, 0);
+      const curPerPartyPerson = curPartyAmounts.map(a => count > 0 ? Math.ceil(a / count) : 0);
+      const curOverallPerPerson = curPerPartyPerson.reduce((s, v) => s + v, 0);
 
       let currentCollected = 0;
       sortedNames.forEach(name => {
-        const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"]`);
+        let personTotal = 0;
+        for (let pi = 0; pi < partyCount; pi++) {
+          const input = result.querySelector(`.settle-amount-input[data-name="${CSS.escape(name)}"][data-party="${pi}"]`);
+          const saved = savedPartyPersonAmounts[name]?.[pi];
+          const v = input ? (parseInt(input.value) || 0) : (saved !== undefined ? saved : curPerPartyPerson[pi]);
+          personTotal += v;
+        }
+        currentCollected += personTotal;
+        const totalCell = result.querySelector(`#ptotal-${CSS.escape(name)}`);
+        if (totalCell) totalCell.textContent = `¥${personTotal.toLocaleString()}`;
         const diffEl = result.querySelector(`#diff-${CSS.escape(name)}`);
-        const v = input ? (parseInt(input.value) || 0) : (savedAmounts[name] !== undefined ? savedAmounts[name] : perPerson);
-        currentCollected += v;
         if (diffEl) {
-          const d = v - currentPerPerson;
+          const d = personTotal - curOverallPerPerson;
           diffEl.textContent = d === 0 ? '±0' : d > 0 ? `+¥${d.toLocaleString()}` : `-¥${Math.abs(d).toLocaleString()}`;
           diffEl.className = 'settle-diff' + (d > 0 ? ' over' : d < 0 ? ' under' : '');
         }
       });
 
-      // サマリーボックスの個人合計・合計金額・均等割りをリアルタイム更新
       const summaryCollected = result.querySelector('#summaryCollected');
-      const summaryTotal = result.querySelector('#summaryTotal');
-      const summaryPer = result.querySelector('#summaryPerPerson');
+      const summaryTotal     = result.querySelector('#summaryTotal');
+      const summaryPer       = result.querySelector('#summaryPerPerson');
       if (summaryCollected) summaryCollected.textContent = `¥${currentCollected.toLocaleString()}`;
-      if (summaryTotal) summaryTotal.textContent = `¥${currentTotal.toLocaleString()}`;
-      if (summaryPer) summaryPer.textContent = `¥${currentPerPerson.toLocaleString()}`;
-
+      if (summaryTotal)     summaryTotal.textContent     = `¥${curTotal.toLocaleString()}`;
+      if (summaryPer)       summaryPer.textContent       = `¥${curOverallPerPerson.toLocaleString()}`;
       const banner = result.querySelector('#settleMatchBanner');
-      if (banner) updateSettleBanner(banner, currentCollected - currentTotal, currentTotal, currentCollected);
+      if (banner) updateSettleBanner(banner, currentCollected - curTotal, curTotal, currentCollected);
     }
     updateDiffs();
 
@@ -2198,7 +2227,6 @@
         const name = cb.dataset.name;
         const row = result.querySelector(`#row-${CSS.escape(name)}`);
         if (row) row.classList.toggle('paid', cb.checked);
-        // Firebase に保存
         const snap = await getDoc(doc(db, 'events', eventId));
         const currentPaid = snap.data().settle?.paid || {};
         currentPaid[name] = cb.checked;
@@ -2208,16 +2236,22 @@
     });
 
     if (!readOnly) {
-      // 金額入力イベント（手動変更フラグを立てる）
       result.querySelectorAll('.settle-amount-input').forEach(input => {
         input.addEventListener('input', () => { amountsCustomized = true; updateDiffs(); });
       });
 
-      // 均等割りに戻す
+      // 均等割りに戻す（次会ごとに計算）
       result.querySelector('#resetAmountsBtn')?.addEventListener('click', () => {
-        result.querySelectorAll('.settle-amount-input').forEach(input => {
-          input.value = perPerson;
+        const curPerPartyPerson = partyAmounts.map((orig, pi) => {
+          const inp = document.querySelector(`.party-amount-input[data-idx="${pi}"]`);
+          const a = inp ? (parseInt(inp.value) || 0) : orig;
+          return count > 0 ? Math.ceil(a / count) : 0;
         });
+        result.querySelectorAll('.settle-amount-input').forEach(input => {
+          const pi = parseInt(input.dataset.party || '0');
+          input.value = curPerPartyPerson[pi];
+        });
+        amountsCustomized = false;
         updateDiffs();
       });
     }
