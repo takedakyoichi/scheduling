@@ -636,7 +636,7 @@
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
   import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
-  import { getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
+  import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 
   const firebaseConfig = {
     apiKey: "AIzaSyDkczQ9y3u3XaPgWtwBkXm0wwt3bsOGsZ4",
@@ -952,13 +952,26 @@
     }
   });
 
+  // リダイレクト結果を受け取る（リダイレクト方式でログインした場合）
+  getRedirectResult(auth).catch(e => console.error('redirect result error:', e));
+
   document.getElementById('signInBtn').addEventListener('click', async () => {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
     } catch (e) {
-      showToast('⚠️ ログインに失敗しました');
-      console.error(e);
+      // ポップアップがブロックされた場合はリダイレクト方式にフォールバック
+      if (e.code === 'auth/popup-blocked' || e.code === 'auth/popup-closed-by-user') {
+        try {
+          await signInWithRedirect(auth, provider);
+        } catch (e2) {
+          showToast('⚠️ ログインに失敗しました');
+          console.error(e2);
+        }
+      } else {
+        showToast('⚠️ ログインに失敗しました');
+        console.error(e);
+      }
     }
   });
 
