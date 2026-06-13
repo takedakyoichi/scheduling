@@ -895,10 +895,10 @@
     return collection(db, 'users', uid, 'events');
   }
 
-  async function addMyEvent(eventId, name) {
+  async function addMyEvent(eventId, name, isHostEvent = false) {
     if (!currentUser) return;
     const ref = doc(db, 'users', currentUser.uid, 'events', eventId);
-    await setDoc(ref, { name, createdAt: Date.now() }, { merge: true });
+    await setDoc(ref, { name, host: isHostEvent, createdAt: Date.now() }, { merge: true });
   }
 
   async function removeMyEvent(eventId) {
@@ -943,10 +943,13 @@
     const base = `${location.origin}${location.pathname}`;
     list.innerHTML = events.map(e => {
       const d = new Date(e.createdAt || 0);
-      const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()} 作成`;
+      const dateStr = `${d.getFullYear()}/${d.getMonth()+1}/${d.getDate()}`;
+      const roleBadge = e.host
+        ? `<span style="display:inline-block;font-size:0.66rem;font-weight:700;color:#fff;background:var(--green);border-radius:4px;padding:1px 6px;margin-right:6px;">ホスト</span>`
+        : `<span style="display:inline-block;font-size:0.66rem;font-weight:700;color:var(--text-muted);background:#eee;border-radius:4px;padding:1px 6px;margin-right:6px;">参加</span>`;
       return `<div class="my-event-item">
         <div class="my-event-info">
-          <div class="my-event-name">${escHtml(e.name||'')}</div>
+          <div class="my-event-name">${roleBadge}${escHtml(e.name||'')}</div>
           <div class="my-event-meta">${dateStr}</div>
         </div>
         <a class="btn btn-secondary my-event-open" href="${base}?event=${encodeURIComponent(e.eventId)}${e.hostKey ? `&host=${encodeURIComponent(e.hostKey)}` : ''}">開く</a>
@@ -1068,7 +1071,7 @@
     document.getElementById('shareUrl').value = url;
     document.getElementById('shareBox').style.display = 'block';
     btn.textContent = '✅ 作成済み';
-    addMyEvent(eventId, name);
+    addMyEvent(eventId, name, true);
     showToast('🎉 イベントを作成しました！');
   });
 
@@ -1093,6 +1096,7 @@
   let currentParticipantOrder = [];
   let prevSettlePublished = false; // 精算公開状態の変化検知用
   let latestEventData = null;      // 認証状態変化時の再評価用
+  let myEventSavedAsHost = null;   // マイイベント保存済みのロール（null=未保存）
 
   // ホスト判定（アカウントuidベース。旧hostKey方式は互換のため残す）
   function evaluateHost(data) {
@@ -1106,14 +1110,24 @@
       updateDoc(doc(db, 'events', eventId), { ownerUids: [currentUser.uid] }).catch(e => console.error('claim error:', e));
     }
 
-    if (!(isUidOwner || isLegacyHost)) return;
-    isHost = true;
-    document.getElementById('hostBadge').style.display = 'inline-block';
-    document.querySelectorAll('.host-only').forEach(el => el.style.display = 'inline-block');
-    const base = `${location.origin}${location.pathname}`;
-    document.getElementById('participantUrlView').value = `${base}?event=${eventId}`;
-    renderCoHostList(ownerUids, base, eventId);
-    if (currentUser) addMyEvent(eventId, data.name);
+    if (isUidOwner || isLegacyHost) {
+      isHost = true;
+      document.getElementById('hostBadge').style.display = 'inline-block';
+      document.querySelectorAll('.host-only').forEach(el => el.style.display = 'inline-block');
+      const base = `${location.origin}${location.pathname}`;
+      document.getElementById('participantUrlView').value = `${base}?event=${eventId}`;
+      renderCoHostList(ownerUids, base, eventId);
+    }
+    // 開いたイベントをマイイベントに記録（ホスト/参加者問わず、ログイン時）
+    saveMyEvent(data);
+  }
+
+  // 開いたイベントをマイイベント一覧へ保存（ロール変化時のみ書き込み）
+  function saveMyEvent(data) {
+    if (!currentUser || !eventId) return;
+    if (myEventSavedAsHost === isHost) return;
+    myEventSavedAsHost = isHost;
+    addMyEvent(eventId, data.name, isHost);
   }
 
   if (eventId) {
@@ -1196,7 +1210,7 @@
         span.id = 'viewTitle';
         span.textContent = val;
         input.replaceWith(span);
-        if (val !== current) { updateDoc(eventRef, { name: val }); showToast('✅ タイトルを更新しました'); if (currentUser) addMyEvent(eventId, val); }
+        if (val !== current) { updateDoc(eventRef, { name: val }); showToast('✅ タイトルを更新しました'); if (currentUser) addMyEvent(eventId, val, true); }
       };
       input.addEventListener('blur', save);
       input.addEventListener('keydown', e => {
