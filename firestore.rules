@@ -24,8 +24,8 @@ service cloud.firestore {
       // クライアントからの削除は不可
       allow delete: if false;
 
-      // 更新：ホスト本人 / 参加者の投票 / 旧イベントの移行クレーム
-      allow update: if isOwner() || isParticipantWrite() || isLegacyClaim();
+      // 更新：ホスト本人 / 参加者の投票 / 支払済みトグル / 旧イベントの移行クレーム
+      allow update: if isOwner() || isParticipantWrite() || isPaidToggle() || isLegacyClaim();
     }
 
     // ホスト本人（ownerUidsに含まれるログインユーザー）
@@ -39,6 +39,13 @@ service cloud.firestore {
     function isParticipantWrite() {
       return request.resource.data.diff(resource.data)
                .affectedKeys().hasOnly(['participants', 'participantOrder']);
+    }
+
+    // 参加者の「支払済み」トグル：settle.paid のみ変更可（金額等の精算データは不変）
+    function isPaidToggle() {
+      return 'settle' in resource.data
+        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['settle'])
+        && request.resource.data.settle.diff(resource.data.settle).affectedKeys().hasOnly(['paid']);
     }
 
     // 旧イベント（ownerUids未設定）をログインユーザーがクレーム（移行用・ownerUidsの新規付与のみ）

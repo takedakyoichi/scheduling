@@ -2233,7 +2233,7 @@
       const totalCell = `<td class="settle-amount-cell" id="ptotal-${ri}" style="font-weight:700;color:var(--green);">¥${personTotal.toLocaleString()}</td>`;
       const diffCell  = readOnly ? '' : `<td class="settle-diff" id="diff-${ri}"></td>`;
       const paidCell  = `<div class="settle-paid">
-        <input type="checkbox" id="paid-${ri}" class="paid-check" data-name="${en}" data-ri="${ri}" ${isPaid?'checked':''} ${readOnly?'disabled':''}>
+        <input type="checkbox" id="paid-${ri}" class="paid-check" data-name="${en}" data-ri="${ri}" ${isPaid?'checked':''}>
         <label for="paid-${ri}">支払済み</label>
       </div>`;
 
@@ -2326,21 +2326,19 @@
     }
     updateDiffs();
 
-    // 支払済みチェック（ホストのみ更新可。参加者はdisabled表示）
-    if (!readOnly) {
-      result.querySelectorAll('.paid-check').forEach(cb => {
-        cb.addEventListener('change', async () => {
-          const name = cb.dataset.name;
-          const row = result.querySelector(`#row-${cb.dataset.ri}`);
-          if (row) row.classList.toggle('paid', cb.checked);
-          const snap = await getDoc(doc(db, 'events', eventId));
-          const currentPaid = snap.data().settle?.paid || {};
-          currentPaid[name] = cb.checked;
-          await updateDoc(doc(db, 'events', eventId), { 'settle.paid': currentPaid });
-          showToast(cb.checked ? '✅ 支払済みにしました' : '支払済みを取り消しました');
-        });
+    // 支払済みチェック（ホスト・参加者共通。Rulesでsettle.paidのみ許可）
+    result.querySelectorAll('.paid-check').forEach(cb => {
+      cb.addEventListener('change', async () => {
+        const name = cb.dataset.name;
+        const row = result.querySelector(`#row-${cb.dataset.ri}`);
+        if (row) row.classList.toggle('paid', cb.checked);
+        const snap = await getDoc(doc(db, 'events', eventId));
+        const currentPaid = snap.data().settle?.paid || {};
+        currentPaid[name] = cb.checked;
+        await updateDoc(doc(db, 'events', eventId), { 'settle.paid': currentPaid });
+        showToast(cb.checked ? '✅ 支払済みにしました' : '支払済みを取り消しました');
       });
-    }
+    });
 
     if (!readOnly) {
       result.querySelectorAll('.settle-amount-input').forEach(input => {
