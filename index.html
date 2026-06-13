@@ -397,6 +397,11 @@
   <div class="card-title"><div class="icon">📋</div>マイイベント</div>
   <div id="myEventsList"></div>
   <button class="btn btn-ghost" id="newEventBtn" style="margin-top:12px;width:100%;">＋ 新しいイベントを作成</button>
+  <div style="margin-top:14px;padding-top:12px;border-top:1px dashed var(--border);font-size:0.74rem;color:var(--text-muted);line-height:1.6;">
+    共同ホストに招待してもらう場合は、このホストコードを幹事に伝えてください：<br>
+    <code id="myHostCodeTop" style="font-size:0.72rem;background:#f5f5f5;padding:2px 6px;border:1px solid #eee;border-radius:4px;word-break:break-all;">—</code>
+    <button class="btn btn-secondary" id="copyMyCodeTopBtn" style="font-size:0.74rem;padding:3px 8px;margin-left:4px;">コピー</button>
+  </div>
 </div>
 
 <!-- イベント作成カード -->
@@ -475,12 +480,8 @@
         <button class="btn btn-primary" id="copyBtn">コピー</button>
       </div>
     </div>
-    <div>
-      <div style="font-size:0.8rem;font-weight:600;color:#c0392b;margin-bottom:4px;">🔑 ホスト用URL（幹事専用・他人に見せないでください）</div>
-      <div class="share-url">
-        <input type="text" id="hostUrl" readonly>
-        <button class="btn btn-primary" id="copyHostBtn">コピー</button>
-      </div>
+    <div style="font-size:0.78rem;color:var(--text-muted);background:#f0fff7;border:1px solid var(--green-mid);border-radius:6px;padding:10px 12px;line-height:1.6;">
+      🔑 このイベントの<strong>幹事はあなたのアカウント</strong>に紐づきました。管理はログイン後、トップページの「マイイベント」から行えます（ホスト専用URLは不要になりました）。
     </div>
   </div>
 </div>
@@ -515,11 +516,20 @@
       <button class="btn btn-secondary" id="copyParticipantUrlBtn" style="white-space:nowrap;">コピー</button>
     </div>
   </div>
-  <!-- ホスト専用：共同ホストURL発行 -->
+  <!-- ホスト専用：共同ホスト管理（アカウントコード方式） -->
   <div id="coHostWrap" class="host-only" style="display:none;background:#fff8f0;border:1px solid #f5d5a0;border-radius:6px;padding:12px 16px;margin-bottom:16px;">
-    <div style="font-size:0.8rem;font-weight:600;color:#b8860b;margin-bottom:8px;">🔑 共同ホストURL管理</div>
+    <div style="font-size:0.8rem;font-weight:600;color:#b8860b;margin-bottom:8px;">🔑 共同ホスト管理</div>
+    <div style="font-size:0.75rem;color:#8a6d3b;margin-bottom:8px;line-height:1.5;">共同ホストにしたい人に、その人の「ホストコード」を聞いて下記に貼り付けてください。相手はログイン後、画面下部に表示される自分のホストコードをコピーできます。</div>
     <div id="coHostUrlList"></div>
-    <button class="btn btn-secondary" id="addCoHostBtn" style="margin-top:8px;font-size:0.82rem;border-color:#f5d5a0;color:#b8860b;background:#fff8f0;">＋ 共同ホストURLを発行する</button>
+    <div style="display:flex;gap:8px;margin-top:8px;">
+      <input type="text" id="coHostCodeInput" placeholder="共同ホストのホストコードを貼り付け" style="flex:1;font-size:0.78rem;padding:6px 8px;border:1px solid #ddd;border-radius:4px;margin-bottom:0;">
+      <button class="btn btn-secondary" id="addCoHostBtn" style="font-size:0.82rem;white-space:nowrap;border-color:#f5d5a0;color:#b8860b;background:#fff8f0;">＋ 追加</button>
+    </div>
+    <div style="margin-top:10px;padding-top:8px;border-top:1px dashed #f0dca8;font-size:0.75rem;color:#8a6d3b;">
+      あなたのホストコード：
+      <code id="myHostCode" style="font-size:0.72rem;background:#fff;padding:2px 6px;border:1px solid #eee;border-radius:4px;word-break:break-all;">—</code>
+      <button class="btn btn-secondary" id="copyMyCodeBtn" style="font-size:0.74rem;padding:3px 8px;margin-left:4px;border-color:#f5d5a0;color:#b8860b;background:#fff8f0;">コピー</button>
+    </div>
   </div>
 
   <div id="tableWrap"><p class="loading">読み込み中</p></div>
@@ -884,10 +894,10 @@
     return collection(db, 'users', uid, 'events');
   }
 
-  async function addMyEvent(eventId, hostKey, name) {
+  async function addMyEvent(eventId, name) {
     if (!currentUser) return;
     const ref = doc(db, 'users', currentUser.uid, 'events', eventId);
-    await setDoc(ref, { hostKey, name, createdAt: Date.now() }, { merge: true });
+    await setDoc(ref, { name, createdAt: Date.now() }, { merge: true });
   }
 
   async function removeMyEvent(eventId) {
@@ -910,6 +920,15 @@
     card.style.display = 'block';
     document.getElementById('setupCard').style.display = 'none';
 
+    // 自分のホストコード（共同ホスト招待用）を表示
+    const codeTop = document.getElementById('myHostCodeTop');
+    if (codeTop) codeTop.textContent = currentUser.uid;
+    const copyCodeTop = document.getElementById('copyMyCodeTopBtn');
+    if (copyCodeTop && !copyCodeTop.dataset.bound) {
+      copyCodeTop.dataset.bound = '1';
+      copyCodeTop.addEventListener('click', () => copyText(currentUser.uid, copyCodeTop, 'ホストコード'));
+    }
+
     const snap = await getDocs(userEventsRef(currentUser.uid));
     const events = snap.docs
       .map(d => ({ eventId: d.id, ...d.data() }))
@@ -929,7 +948,7 @@
           <div class="my-event-name">${escHtml(e.name||'')}</div>
           <div class="my-event-meta">${dateStr}</div>
         </div>
-        <a class="btn btn-secondary my-event-open" href="${base}?event=${encodeURIComponent(e.eventId)}&host=${encodeURIComponent(e.hostKey)}">開く</a>
+        <a class="btn btn-secondary my-event-open" href="${base}?event=${encodeURIComponent(e.eventId)}${e.hostKey ? `&host=${encodeURIComponent(e.hostKey)}` : ''}">開く</a>
         <button class="my-event-remove" data-id="${escHtml(e.eventId)}" title="一覧から削除">✕</button>
       </div>`;
     }).join('');
@@ -967,13 +986,16 @@
     // トップページのみマイイベントを再描画
     if (!new URLSearchParams(location.search).get('event')) {
       renderMyEvents();
+    } else if (latestEventData && !isHost) {
+      // イベントページでログイン後にホスト権限を再評価
+      evaluateHost(latestEventData);
     }
   });
 
   // リダイレクト結果を受け取る（リダイレクト方式でログインした場合）
   getRedirectResult(auth).catch(e => console.error('redirect result error:', e));
 
-  document.getElementById('signInBtn').addEventListener('click', async () => {
+  async function signIn() {
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
@@ -991,7 +1013,9 @@
         console.error(e);
       }
     }
-  });
+  }
+
+  document.getElementById('signInBtn').addEventListener('click', signIn);
 
   document.getElementById('signOutBtn').addEventListener('click', async () => {
     await signOut(auth);
@@ -1013,12 +1037,17 @@
     const dates = getDates();
     if (!name) { showToast('⚠️ イベント名を入力してください'); return; }
     if (dates.length === 0) { showToast('⚠️ 候補日を1つ以上選択してください'); return; }
+    // アカウント認可：ホストはログイン必須
+    if (!currentUser) {
+      showToast('🔑 イベント作成にはログインが必要です');
+      await signIn();
+      return;
+    }
     const btn = document.getElementById('createBtn');
     btn.textContent = '作成中...';
     btn.disabled = true;
     const memo = document.getElementById('eventMemo').value.trim();
     const eventId = randomId(16);
-    const hostKey = randomId(24);
     // 事前参加者を空の投票データとして初期化
     const presetNames = getPresetParticipants();
     const participants = {};
@@ -1028,15 +1057,13 @@
       dates.forEach((_, di) => { votes[di] = ''; });
       participants[pName] = votes;
     });
-    await setDoc(doc(db, 'events', eventId), { name, dates, memo, participants, hostKeys: [hostKey], confirmedDate: null, participantOrder: presetNames });
+    await setDoc(doc(db, 'events', eventId), { name, dates, memo, participants, ownerUids: [currentUser.uid], confirmedDate: null, participantOrder: presetNames });
     const base = `${location.origin}${location.pathname}`;
     const url = `${base}?event=${eventId}`;
-    const hostUrl = `${base}?event=${eventId}&host=${hostKey}`;
     document.getElementById('shareUrl').value = url;
-    document.getElementById('hostUrl').value = hostUrl;
     document.getElementById('shareBox').style.display = 'block';
     btn.textContent = '✅ 作成済み';
-    addMyEvent(eventId, hostKey, name);
+    addMyEvent(eventId, name);
     showToast('🎉 イベントを作成しました！');
   });
 
@@ -1050,19 +1077,39 @@
   document.getElementById('copyBtn').addEventListener('click', () => {
     copyText(document.getElementById('shareUrl').value, document.getElementById('copyBtn'), '参加者用URL');
   });
-  document.getElementById('copyHostBtn').addEventListener('click', () => {
-    copyText(document.getElementById('hostUrl').value, document.getElementById('copyHostBtn'), 'ホスト用URL');
-  });
 
   // ── 回答画面 ──────────────────────────────────
 
   const params = new URLSearchParams(location.search);
   const eventId = params.get('event');
-  const hostParam = params.get('host');
+  const hostParam = params.get('host'); // 旧イベント互換用
   let isHost = false;
   let currentDates = [];
   let currentParticipantOrder = [];
   let prevSettlePublished = false; // 精算公開状態の変化検知用
+  let latestEventData = null;      // 認証状態変化時の再評価用
+
+  // ホスト判定（アカウントuidベース。旧hostKey方式は互換のため残す）
+  function evaluateHost(data) {
+    const ownerUids = data.ownerUids || [];
+    const legacyKeys = data.hostKeys || (data.hostKey ? [data.hostKey] : []);
+    const isUidOwner = !!(currentUser && ownerUids.includes(currentUser.uid));
+    const isLegacyHost = !!(hostParam && legacyKeys.includes(hostParam));
+
+    // 旧イベント（ownerUids未設定）をログイン中の正当な旧ホストがクレーム（移行）
+    if (currentUser && ownerUids.length === 0 && isLegacyHost) {
+      updateDoc(doc(db, 'events', eventId), { ownerUids: [currentUser.uid] }).catch(e => console.error('claim error:', e));
+    }
+
+    if (!(isUidOwner || isLegacyHost)) return;
+    isHost = true;
+    document.getElementById('hostBadge').style.display = 'inline-block';
+    document.querySelectorAll('.host-only').forEach(el => el.style.display = 'inline-block');
+    const base = `${location.origin}${location.pathname}`;
+    document.getElementById('participantUrlView').value = `${base}?event=${eventId}`;
+    renderCoHostList(ownerUids, base, eventId);
+    if (currentUser) addMyEvent(eventId, data.name);
+  }
 
   if (eventId) {
     document.getElementById('setupCard').style.display = 'none';
@@ -1075,23 +1122,11 @@
         return;
       }
       const data = snap.data();
+      latestEventData = data;
       currentDates = data.dates;
       currentParticipantOrder = data.participantOrder || [];
 
-      // ホスト判定（hostKeys配列 or 旧hostKey単体に対応）
-      const hostKeys = data.hostKeys || (data.hostKey ? [data.hostKey] : []);
-      if (hostParam && hostKeys.includes(hostParam)) {
-        isHost = true;
-        document.getElementById('hostBadge').style.display = 'inline-block';
-        document.querySelectorAll('.host-only').forEach(el => el.style.display = 'inline-block');
-        // 参加者用URLをセット
-        const base = `${location.origin}${location.pathname}`;
-        document.getElementById('participantUrlView').value = `${base}?event=${eventId}`;
-        // 共同ホストURLリスト更新
-        renderCoHostList(hostKeys, base, eventId);
-        // マイイベントに記録（別デバイスや再訪問時も登録）
-        addMyEvent(eventId, hostParam, data.name);
-      }
+      evaluateHost(data);
 
       // タイトル表示
       document.getElementById('viewTitle').textContent = data.name;
@@ -1156,7 +1191,7 @@
         span.id = 'viewTitle';
         span.textContent = val;
         input.replaceWith(span);
-        if (val !== current) { updateDoc(eventRef, { name: val }); showToast('✅ タイトルを更新しました'); if (hostParam) addMyEvent(eventId, hostParam, val); }
+        if (val !== current) { updateDoc(eventRef, { name: val }); showToast('✅ タイトルを更新しました'); if (currentUser) addMyEvent(eventId, val); }
       };
       input.addEventListener('blur', save);
       input.addEventListener('keydown', e => {
@@ -1195,16 +1230,26 @@
       copyText(document.getElementById('participantUrlView').value, document.getElementById('copyParticipantUrlBtn'), '参加者用URL');
     });
 
-    // 共同ホストURL発行
+    // 共同ホスト追加（相手のホストコード=uidを指定）
     document.getElementById('addCoHostBtn')?.addEventListener('click', async () => {
-      const newKey = randomId(24);
+      const input = document.getElementById('coHostCodeInput');
+      const code = (input?.value || '').trim();
+      if (!code) { showToast('⚠️ ホストコードを貼り付けてください'); return; }
       const snap = await getDoc(doc(db, 'events', eventId));
-      const currentKeys = snap.data().hostKeys || (snap.data().hostKey ? [snap.data().hostKey] : []);
-      const updated = [...currentKeys, newKey];
-      await updateDoc(doc(db, 'events', eventId), { hostKeys: updated });
+      const owners = snap.data().ownerUids || [];
+      if (owners.includes(code)) { showToast('すでに共同ホストです'); return; }
+      const updated = [...owners, code];
+      await updateDoc(doc(db, 'events', eventId), { ownerUids: updated });
+      if (input) input.value = '';
       const base = `${location.origin}${location.pathname}`;
       renderCoHostList(updated, base, eventId);
-      showToast('🔑 共同ホストURLを発行しました');
+      showToast('🔑 共同ホストを追加しました');
+    });
+
+    // 自分のホストコードを表示・コピー
+    document.getElementById('copyMyCodeBtn')?.addEventListener('click', () => {
+      if (!currentUser) { showToast('⚠️ ログインが必要です'); return; }
+      copyText(currentUser.uid, document.getElementById('copyMyCodeBtn'), 'ホストコード');
     });
 
     document.getElementById('addMemoBtn')?.addEventListener('click', () => {
@@ -1724,41 +1769,38 @@
     }
   }
 
-  // ── 共同ホストURL管理 ──────────────────────────
+  // ── 共同ホスト管理（アカウントuidベース）──────────────
 
-  function renderCoHostList(hostKeys, base, eventId) {
+  function renderCoHostList(ownerUids, base, eventId) {
+    // 自分のホストコードを表示
+    const myCodeEl = document.getElementById('myHostCode');
+    if (myCodeEl) myCodeEl.textContent = currentUser ? currentUser.uid : '（ログインで表示）';
+
     const list = document.getElementById('coHostUrlList');
     if (!list) return;
-    if (hostKeys.length <= 1) {
+    // 自分以外の所有者を共同ホストとして表示
+    const others = (ownerUids || []).filter(uid => uid !== (currentUser && currentUser.uid));
+    if (others.length === 0) {
       list.innerHTML = '<div style="font-size:0.8rem;color:#aaa;">まだ共同ホストはいません</div>';
       return;
     }
-    // 自分以外のキーを表示（インデックス1以降が共同ホスト）
-    list.innerHTML = hostKeys.slice(1).map((key, i) => {
-      const url = `${base}?event=${eventId}&host=${key}`;
-      const btnId = `copyCoHost${i}`;
-      return `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
-        <span style="font-size:0.78rem;color:#888;min-width:60px;">共同ホスト${i+1}</span>
-        <input type="text" value="${url}" readonly style="flex:1;font-size:0.78rem;background:white;color:#333;padding:5px 8px;border:1px solid #ddd;border-radius:4px;margin-bottom:0;">
-        <button class="btn btn-secondary" id="${btnId}" data-url="${url}" style="font-size:0.78rem;padding:5px 10px;white-space:nowrap;border-color:#f5d5a0;color:#b8860b;background:#fff8f0;">コピー</button>
-        <button class="revoke-btn btn" data-key="${key}" style="font-size:0.78rem;padding:5px 8px;background:none;border:1px solid #f5c0c0;color:#c0392b;">削除</button>
-      </div>`;
-    }).join('');
-
-    // コピーボタン
-    list.querySelectorAll('[id^=copyCoHost]').forEach(btn => {
-      btn.addEventListener('click', () => copyText(btn.dataset.url, btn, '共同ホストURL'));
-    });
+    list.innerHTML = others.map((uid, i) =>
+      `<div style="display:flex;gap:8px;align-items:center;margin-bottom:6px;">
+        <span style="font-size:0.78rem;color:#888;min-width:64px;">共同ホスト${i+1}</span>
+        <code style="flex:1;font-size:0.72rem;background:white;color:#333;padding:5px 8px;border:1px solid #ddd;border-radius:4px;word-break:break-all;">${escHtml(uid)}</code>
+        <button class="revoke-btn btn" data-uid="${escHtml(uid)}" style="font-size:0.78rem;padding:5px 8px;background:none;border:1px solid #f5c0c0;color:#c0392b;">削除</button>
+      </div>`
+    ).join('');
 
     // 削除ボタン
     list.querySelectorAll('.revoke-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        if (!confirm('この共同ホストURLを無効にしますか？')) return;
+        if (!confirm('この共同ホストを解除しますか？')) return;
         const snap = await getDoc(doc(db, 'events', eventId));
-        const updated = (snap.data().hostKeys || []).filter(k => k !== btn.dataset.key);
-        await updateDoc(doc(db, 'events', eventId), { hostKeys: updated });
+        const updated = (snap.data().ownerUids || []).filter(u => u !== btn.dataset.uid);
+        await updateDoc(doc(db, 'events', eventId), { ownerUids: updated });
         renderCoHostList(updated, base, eventId);
-        showToast('🗑 共同ホストURLを削除しました');
+        showToast('🗑 共同ホストを解除しました');
       });
     });
   }
@@ -2191,7 +2233,7 @@
       const totalCell = `<td class="settle-amount-cell" id="ptotal-${ri}" style="font-weight:700;color:var(--green);">¥${personTotal.toLocaleString()}</td>`;
       const diffCell  = readOnly ? '' : `<td class="settle-diff" id="diff-${ri}"></td>`;
       const paidCell  = `<div class="settle-paid">
-        <input type="checkbox" id="paid-${ri}" class="paid-check" data-name="${en}" data-ri="${ri}" ${isPaid?'checked':''}>
+        <input type="checkbox" id="paid-${ri}" class="paid-check" data-name="${en}" data-ri="${ri}" ${isPaid?'checked':''} ${readOnly?'disabled':''}>
         <label for="paid-${ri}">支払済み</label>
       </div>`;
 
@@ -2284,19 +2326,21 @@
     }
     updateDiffs();
 
-    // 支払済みチェック（ホスト・参加者共通）
-    result.querySelectorAll('.paid-check').forEach(cb => {
-      cb.addEventListener('change', async () => {
-        const name = cb.dataset.name;
-        const row = result.querySelector(`#row-${cb.dataset.ri}`);
-        if (row) row.classList.toggle('paid', cb.checked);
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const currentPaid = snap.data().settle?.paid || {};
-        currentPaid[name] = cb.checked;
-        await updateDoc(doc(db, 'events', eventId), { 'settle.paid': currentPaid });
-        showToast(cb.checked ? '✅ 支払済みにしました' : '支払済みを取り消しました');
+    // 支払済みチェック（ホストのみ更新可。参加者はdisabled表示）
+    if (!readOnly) {
+      result.querySelectorAll('.paid-check').forEach(cb => {
+        cb.addEventListener('change', async () => {
+          const name = cb.dataset.name;
+          const row = result.querySelector(`#row-${cb.dataset.ri}`);
+          if (row) row.classList.toggle('paid', cb.checked);
+          const snap = await getDoc(doc(db, 'events', eventId));
+          const currentPaid = snap.data().settle?.paid || {};
+          currentPaid[name] = cb.checked;
+          await updateDoc(doc(db, 'events', eventId), { 'settle.paid': currentPaid });
+          showToast(cb.checked ? '✅ 支払済みにしました' : '支払済みを取り消しました');
+        });
       });
-    });
+    }
 
     if (!readOnly) {
       result.querySelectorAll('.settle-amount-input').forEach(input => {
