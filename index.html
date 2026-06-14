@@ -652,7 +652,7 @@
 
 <script type="module">
   import { initializeApp } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-app.js";
-  import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, deleteDoc } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
+  import { getFirestore, doc, setDoc, getDoc, updateDoc, onSnapshot, collection, getDocs, deleteDoc, runTransaction } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-firestore.js";
   import { getAuth, GoogleAuthProvider, signInWithPopup, signInWithRedirect, getRedirectResult, signOut, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/11.8.1/firebase-auth.js";
 
   const firebaseConfig = {
@@ -689,6 +689,18 @@
   // 名前を正規化（全角→半角、大文字→小文字、前後空白除去）して比較用キーを返す
   function normalizeName(name) {
     return name.trim().normalize('NFKC').toLowerCase();
+  }
+
+  // 参加者名のバリデーション（Firestoreフィールドパスに使うため危険文字・予約名を弾く）
+  // 戻り値：問題なければ ''、あればエラーメッセージ
+  function validateParticipantName(name) {
+    const n = (name || '').trim();
+    if (!n) return '名前を入力してください';
+    if (n.length > 50) return '名前は50文字以内にしてください';
+    if (/[.~*/\[\]]/.test(n)) return '名前に . ~ * / [ ] は使用できません';
+    if (n.startsWith('_')) return '名前の先頭に「_」は使用できません';
+    if (/^\d+$/.test(n)) return '数字のみの名前は使用できません';
+    return '';
   }
 
   // XSS対策：HTML本文・属性値に埋め込むユーザー入力は必ずこれを通す
@@ -1100,13 +1112,17 @@
       await signIn();
       return;
     }
+    // 事前参加者を空の投票データとして初期化
+    const presetNames = getPresetParticipants();
+    for (const pName of presetNames) {
+      const err = validateParticipantName(pName);
+      if (err) { showToast(`⚠️ 事前参加者「${pName}」：${err}`); return; }
+    }
     const btn = document.getElementById('createBtn');
     btn.textContent = '作成中...';
     btn.disabled = true;
     const memo = document.getElementById('eventMemo').value.trim();
     const eventId = randomId(16);
-    // 事前参加者を空の投票データとして初期化
-    const presetNames = getPresetParticipants();
     const participants = {};
     const now = Date.now();
     presetNames.forEach((pName, i) => {
@@ -1148,15 +1164,18 @@
   let myEventSavedAsHost = null;   // マイイベント保存済みのロール（null=未保存）
 
   // ホスト判定（アカウントuidベース。旧hostKey方式は互換のため残す）
-  function evaluateHost(data) {
+  async function evaluateHost(data) {
     const ownerUids = data.ownerUids || [];
     const legacyKeys = data.hostKeys || (data.hostKey ? [data.hostKey] : []);
     const isUidOwner = !!(currentUser && ownerUids.includes(currentUser.uid));
     const isLegacyHost = !!(hostParam && legacyKeys.includes(hostParam));
 
     // 旧イベント（ownerUids未設定）をログイン中の正当な旧ホストがクレーム（移行）
+    // クレーム完了を待ってからホスト操作を許可（先行操作がRulesで弾かれる窓を防ぐ）
     if (currentUser && ownerUids.length === 0 && isLegacyHost) {
-      updateDoc(doc(db, 'events', eventId), { ownerUids: [currentUser.uid] }).catch(e => console.error('claim error:', e));
+      try {
+        await updateDoc(doc(db, 'events', eventId), { ownerUids: [currentUser.uid] });
+      } catch (e) { console.error('claim error:', e); }
     }
 
     if (isUidOwner || isLegacyHost) {
@@ -1303,11 +1322,21 @@
       const input = document.getElementById('coHostCodeInput');
       const code = (input?.value || '').trim();
       if (!code) { showToast('⚠️ ホストコードを貼り付けてください'); return; }
-      const snap = await getDoc(doc(db, 'events', eventId));
-      const owners = snap.data().ownerUids || [];
-      if (owners.includes(code)) { showToast('すでに共同ホストです'); return; }
-      const updated = [...owners, code];
-      await updateDoc(doc(db, 'events', eventId), { ownerUids: updated });
+      let updated;
+      try {
+        updated = await runTransaction(db, async (tx) => {
+          const ref = doc(db, 'events', eventId);
+          const owners = (await tx.get(ref)).data().ownerUids || [];
+          if (owners.includes(code)) throw new Error('DUP');
+          const next = [...owners, code];
+          tx.update(ref, { ownerUids: next });
+          return next;
+        });
+      } catch (e) {
+        if (e.message === 'DUP') showToast('すでに共同ホストです');
+        else { showToast('⚠️ 追加に失敗しました'); console.error(e); }
+        return;
+      }
       if (input) input.value = '';
       const base = `${location.origin}${location.pathname}`;
       renderCoHostList(updated, base, eventId);
@@ -1520,11 +1549,15 @@
       btn.addEventListener('click', async () => {
         const name = btn.dataset.name;
         if (!confirm(`「${name}」の回答を削除しますか？`)) return;
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const newP = { ...snap.data().participants };
-        delete newP[name];
-        await updateDoc(doc(db, 'events', eventId), { participants: newP });
-        showToast(`🗑 ${name} さんの回答を削除しました`);
+        try {
+          await runTransaction(db, async (tx) => {
+            const ref = doc(db, 'events', eventId);
+            const newP = { ...((await tx.get(ref)).data().participants || {}) };
+            delete newP[name];
+            tx.update(ref, { participants: newP });
+          });
+          showToast(`🗑 ${name} さんの回答を削除しました`);
+        } catch (e) { showToast('⚠️ 削除に失敗しました'); console.error(e); }
       });
     });
   }
@@ -1653,11 +1686,16 @@
       wrap.querySelectorAll('.confirm-btn').forEach(btn => {
         btn.addEventListener('click', async () => {
           const idx = parseInt(btn.dataset.dateIdx);
-          const snap = await getDoc(doc(db, 'events', eventId));
-          const current = snap.data().confirmedDate;
-          // 既に確定中なら解除、そうでなければ確定
-          await updateDoc(doc(db, 'events', eventId), { confirmedDate: current === idx ? null : idx });
-          showToast(current === idx ? '📌 確定を解除しました' : '🎉 日程を確定しました');
+          try {
+            const wasConfirmed = await runTransaction(db, async (tx) => {
+              const ref = doc(db, 'events', eventId);
+              const current = (await tx.get(ref)).data().confirmedDate;
+              const isSame = current === idx;
+              tx.update(ref, { confirmedDate: isSame ? null : idx });
+              return isSame;
+            });
+            showToast(wasConfirmed ? '📌 確定を解除しました' : '🎉 日程を確定しました');
+          } catch (e) { showToast('⚠️ 更新に失敗しました'); console.error(e); }
         });
       });
 
@@ -1666,18 +1704,22 @@
         btn.addEventListener('click', async () => {
           const name = btn.dataset.name;
           const dir = btn.dataset.dir;
-          const snap = await getDoc(doc(db, 'events', eventId));
-          const data = snap.data();
-          // 現在の順序を取得
-          const order = data.participantOrder?.length
-            ? [...data.participantOrder]
-            : Object.entries(data.participants).sort((a,b) => (a[1]._joinedAt||0)-(b[1]._joinedAt||0)).map(([n])=>n);
-          // 全参加者が含まれるよう補完
-          Object.keys(data.participants).forEach(n => { if (!order.includes(n)) order.push(n); });
-          const idx = order.indexOf(name);
-          if (dir === 'left' && idx > 0) [order[idx-1], order[idx]] = [order[idx], order[idx-1]];
-          if (dir === 'right' && idx < order.length-1) [order[idx], order[idx+1]] = [order[idx+1], order[idx]];
-          await updateDoc(doc(db, 'events', eventId), { participantOrder: order });
+          try {
+            await runTransaction(db, async (tx) => {
+              const ref = doc(db, 'events', eventId);
+              const data = (await tx.get(ref)).data();
+              // 現在の順序を取得
+              const order = data.participantOrder?.length
+                ? [...data.participantOrder]
+                : Object.entries(data.participants).sort((a,b) => (a[1]._joinedAt||0)-(b[1]._joinedAt||0)).map(([n])=>n);
+              // 全参加者が含まれるよう補完
+              Object.keys(data.participants).forEach(n => { if (!order.includes(n)) order.push(n); });
+              const idx = order.indexOf(name);
+              if (dir === 'left' && idx > 0) [order[idx-1], order[idx]] = [order[idx], order[idx-1]];
+              if (dir === 'right' && idx < order.length-1) [order[idx], order[idx+1]] = [order[idx+1], order[idx]];
+              tx.update(ref, { participantOrder: order });
+            });
+          } catch (e) { showToast('⚠️ 並び替えに失敗しました'); console.error(e); }
         });
       });
     }
@@ -1709,12 +1751,8 @@
     if (registerBtn) {
       registerBtn.addEventListener('click', async () => {
         const rawName = (wrap.querySelector('#newName')?.value || '').trim();
-        if (!rawName) { showToast('⚠️ 名前を入力してください'); return; }
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const existing = snap.data().participants || {};
-        if (Object.keys(existing).some(n => normalizeName(n) === normalizeName(rawName))) {
-          showToast('⚠️ 同じ名前が既に登録されています'); return;
-        }
+        const nameErr = validateParticipantName(rawName);
+        if (nameErr) { showToast(`⚠️ ${nameErr}`); return; }
         const unselected = dates.findIndex((_, i) =>
           !wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`)
         );
@@ -1729,8 +1767,22 @@
           const sel = wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`);
           votes[i] = sel ? sel.dataset.key : '';
         });
-        await updateDoc(doc(db, 'events', eventId), { [`participants.${rawName}`]: votes });
-        showToast(`✅ ${rawName} さんの回答を登録しました`);
+        // トランザクションで重複名チェックと書き込みを原子的に行う
+        try {
+          await runTransaction(db, async (tx) => {
+            const ref = doc(db, 'events', eventId);
+            const fresh = await tx.get(ref);
+            const existing = fresh.data().participants || {};
+            if (Object.keys(existing).some(n => normalizeName(n) === normalizeName(rawName))) {
+              throw new Error('DUP');
+            }
+            tx.update(ref, { [`participants.${rawName}`]: votes });
+          });
+          showToast(`✅ ${rawName} さんの回答を登録しました`);
+        } catch (e) {
+          if (e.message === 'DUP') showToast('⚠️ 同じ名前が既に登録されています');
+          else { showToast('⚠️ 登録に失敗しました'); console.error(e); }
+        }
       });
     }
   }
@@ -1741,39 +1793,48 @@
     // 日程削除ボタン
     wrap.querySelectorAll('.date-del-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
-        const idx = parseInt(btn.dataset.dateIdx);
-        const [datePart, timePart] = dates[idx].split(' ');
+        const renderedIdx = parseInt(btn.dataset.dateIdx);
+        const targetDate = dates[renderedIdx]; // 値で照合（描画時とずれても安全に）
+        const [datePart, timePart] = targetDate.split(' ');
         const dt = new Date(datePart + 'T00:00:00');
         const label = `${dt.getMonth()+1}/${dt.getDate()}(${WEEKS[dt.getDay()]})` + (timePart ? ` ${timePart}` : '');
         if (!confirm(`「${label}」の日程を削除しますか？\n参加者の回答データも更新されます。`)) return;
 
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const data = snap.data();
-        const oldDates = data.dates;
-        const newDates = oldDates.filter((_, i) => i !== idx);
+        try {
+          await runTransaction(db, async (tx) => {
+            const ref = doc(db, 'events', eventId);
+            const data = (await tx.get(ref)).data();
+            const oldDates = data.dates || [];
+            // 最新データ上での対象インデックスを取得（既に削除済みなら中断）
+            const idx = oldDates.indexOf(targetDate);
+            if (idx === -1) throw new Error('GONE');
+            const newDates = oldDates.filter((_, i) => i !== idx);
 
-        // 参加者の投票インデックスを再構築
-        const newParticipants = {};
-        for (const [name, votes] of Object.entries(data.participants || {})) {
-          const newVotes = { _note: votes._note || '', _joinedAt: votes._joinedAt || 0 };
-          let newIdx = 0;
-          for (let i = 0; i < oldDates.length; i++) {
-            if (i === idx) continue;
-            newVotes[newIdx] = votes[i] || '';
-            newIdx++;
-          }
-          newParticipants[name] = newVotes;
+            // 参加者の投票インデックスを再構築
+            const newParticipants = {};
+            for (const [name, votes] of Object.entries(data.participants || {})) {
+              const newVotes = { _note: votes._note || '', _joinedAt: votes._joinedAt || 0 };
+              let newIdx = 0;
+              for (let i = 0; i < oldDates.length; i++) {
+                if (i === idx) continue;
+                newVotes[newIdx] = votes[i] || '';
+                newIdx++;
+              }
+              newParticipants[name] = newVotes;
+            }
+
+            // confirmedDate の補正
+            let confirmedDate = data.confirmedDate;
+            if (confirmedDate === idx) confirmedDate = null;
+            else if (confirmedDate !== null && confirmedDate > idx) confirmedDate = confirmedDate - 1;
+
+            tx.update(ref, { dates: newDates, participants: newParticipants, confirmedDate });
+          });
+          showToast('🗑 日程を削除しました');
+        } catch (e) {
+          if (e.message === 'GONE') showToast('この日程は既に削除されています');
+          else { showToast('⚠️ 削除に失敗しました'); console.error(e); }
         }
-
-        // confirmedDate の補正
-        let confirmedDate = data.confirmedDate;
-        if (confirmedDate === idx) confirmedDate = null;
-        else if (confirmedDate !== null && confirmedDate > idx) confirmedDate = confirmedDate - 1;
-
-        await updateDoc(doc(db, 'events', eventId), {
-          dates: newDates, participants: newParticipants, confirmedDate
-        });
-        showToast('🗑 日程を削除しました');
       });
     });
 
@@ -1786,53 +1847,57 @@
         const timeInput = wrap.querySelector('#addTimeInput');
         const fromVal = fromInput?.value;
         const toVal   = toInput?.value || fromVal; // 終了日未入力なら開始日と同じ
+        const explicitTime = timeInput?.value || '';
         if (!fromVal) { showToast('⚠️ 開始日を選択してください'); return; }
         if (toVal < fromVal) { showToast('⚠️ 終了日は開始日以降を選択してください'); return; }
 
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const data = snap.data();
-        const existingDates = data.dates;
+        try {
+          const added = await runTransaction(db, async (tx) => {
+            const ref = doc(db, 'events', eventId);
+            const data = (await tx.get(ref)).data();
+            const existingDates = data.dates || [];
 
-        // 時刻未指定の場合、既存日程の時刻を流用（全日程で共通の時刻があれば）
-        let timeVal = timeInput?.value || '';
-        if (!timeVal) {
-          const existingTimes = existingDates.map(d => d.includes(' ') ? d.split(' ')[1] : '');
-          const uniqueTimes = [...new Set(existingTimes)];
-          if (uniqueTimes.length === 1 && uniqueTimes[0]) timeVal = uniqueTimes[0];
-        }
+            // 時刻未指定の場合、既存日程の時刻を流用（全日程で共通の時刻があれば）
+            let timeVal = explicitTime;
+            if (!timeVal) {
+              const uniqueTimes = [...new Set(existingDates.map(d => d.includes(' ') ? d.split(' ')[1] : ''))];
+              if (uniqueTimes.length === 1 && uniqueTimes[0]) timeVal = uniqueTimes[0];
+            }
 
-        // 開始〜終了の全日付を生成
-        const candidates = [];
-        const cur = new Date(fromVal + 'T00:00:00');
-        const end = new Date(toVal   + 'T00:00:00');
-        while (cur <= end) {
-          const yyyy = cur.getFullYear();
-          const mm = String(cur.getMonth()+1).padStart(2,'0');
-          const dd = String(cur.getDate()).padStart(2,'0');
-          candidates.push(timeVal ? `${yyyy}-${mm}-${dd} ${timeVal}` : `${yyyy}-${mm}-${dd}`);
-          cur.setDate(cur.getDate() + 1);
-        }
+            // 開始〜終了の全日付を生成
+            const candidates = [];
+            const cur = new Date(fromVal + 'T00:00:00');
+            const end = new Date(toVal   + 'T00:00:00');
+            while (cur <= end) {
+              const yyyy = cur.getFullYear();
+              const mm = String(cur.getMonth()+1).padStart(2,'0');
+              const dd = String(cur.getDate()).padStart(2,'0');
+              candidates.push(timeVal ? `${yyyy}-${mm}-${dd} ${timeVal}` : `${yyyy}-${mm}-${dd}`);
+              cur.setDate(cur.getDate() + 1);
+            }
 
-        // 重複を除いて追加対象を絞る
-        const toAdd = candidates.filter(d => !existingDates.includes(d));
-        if (toAdd.length === 0) { showToast('⚠️ 指定した日程はすべて登録済みです'); return; }
+            // 重複を除いて追加対象を絞る（最新dates基準）
+            const toAdd = candidates.filter(d => !existingDates.includes(d));
+            if (toAdd.length === 0) throw new Error('ALL_EXIST');
 
-        const newDates = [...existingDates, ...toAdd];
-        const updates = { dates: newDates };
-        // 既存参加者に空の回答を追加
-        const participantNames = Object.keys(data.participants || {});
-        toAdd.forEach((_, i) => {
-          const newIdx = existingDates.length + i;
-          participantNames.forEach(name => {
-            updates[`participants.${name}.${newIdx}`] = '';
+            const updates = { dates: [...existingDates, ...toAdd] };
+            // 既存参加者に空の回答を追加（最新の長さで採番）
+            const participantNames = Object.keys(data.participants || {});
+            toAdd.forEach((_, i) => {
+              const newIdx = existingDates.length + i;
+              participantNames.forEach(name => { updates[`participants.${name}.${newIdx}`] = ''; });
+            });
+            tx.update(ref, updates);
+            return toAdd.length;
           });
-        });
-
-        await updateDoc(doc(db, 'events', eventId), updates);
-        showToast(`✅ ${toAdd.length}件の日程を追加しました`);
-        if (fromInput) fromInput.value = '';
-        if (toInput)   toInput.value   = '';
-        if (timeInput) timeInput.value = '';
+          showToast(`✅ ${added}件の日程を追加しました`);
+          if (fromInput) fromInput.value = '';
+          if (toInput)   toInput.value   = '';
+          if (timeInput) timeInput.value = '';
+        } catch (e) {
+          if (e.message === 'ALL_EXIST') showToast('⚠️ 指定した日程はすべて登録済みです');
+          else { showToast('⚠️ 追加に失敗しました'); console.error(e); }
+        }
       });
     }
   }
@@ -1864,11 +1929,16 @@
     list.querySelectorAll('.revoke-btn').forEach(btn => {
       btn.addEventListener('click', async () => {
         if (!confirm('この共同ホストを解除しますか？')) return;
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const updated = (snap.data().ownerUids || []).filter(u => u !== btn.dataset.uid);
-        await updateDoc(doc(db, 'events', eventId), { ownerUids: updated });
-        renderCoHostList(updated, base, eventId);
-        showToast('🗑 共同ホストを解除しました');
+        try {
+          const updated = await runTransaction(db, async (tx) => {
+            const ref = doc(db, 'events', eventId);
+            const next = ((await tx.get(ref)).data().ownerUids || []).filter(u => u !== btn.dataset.uid);
+            tx.update(ref, { ownerUids: next });
+            return next;
+          });
+          renderCoHostList(updated, base, eventId);
+          showToast('🗑 共同ホストを解除しました');
+        } catch (e) { showToast('⚠️ 解除に失敗しました'); console.error(e); }
       });
     });
   }
@@ -2400,11 +2470,19 @@
         const name = cb.dataset.name;
         const row = result.querySelector(`#row-${cb.dataset.ri}`);
         if (row) row.classList.toggle('paid', cb.checked);
-        const snap = await getDoc(doc(db, 'events', eventId));
-        const currentPaid = snap.data().settle?.paid || {};
-        currentPaid[name] = cb.checked;
-        await updateDoc(doc(db, 'events', eventId), { 'settle.paid': currentPaid });
-        showToast(cb.checked ? '✅ 支払済みにしました' : '支払済みを取り消しました');
+        try {
+          await runTransaction(db, async (tx) => {
+            const ref = doc(db, 'events', eventId);
+            const currentPaid = { ...((await tx.get(ref)).data().settle?.paid || {}) };
+            currentPaid[name] = cb.checked;
+            tx.update(ref, { 'settle.paid': currentPaid });
+          });
+          showToast(cb.checked ? '✅ 支払済みにしました' : '支払済みを取り消しました');
+        } catch (e) {
+          if (row) row.classList.toggle('paid', !cb.checked); // 失敗時はUIを戻す
+          cb.checked = !cb.checked;
+          showToast('⚠️ 更新に失敗しました'); console.error(e);
+        }
       });
     });
 
