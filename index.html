@@ -367,26 +367,9 @@
       border-radius:8px;
     }
     #addDateWrap label { font-size:0.78rem; font-weight:600; color:var(--text-muted); white-space:nowrap; }
-
-    /* 起動スプラッシュ */
-    #appSplash {
-      position: fixed; inset: 0; z-index: 10000;
-      background: #efe9df;
-      display: flex; align-items: center; justify-content: center;
-      transition: opacity 0.5s ease;
-    }
-    #appSplash img {
-      width: 100%; height: 100%; object-fit: cover; object-position: center;
-    }
-    #appSplash.hide { opacity: 0; pointer-events: none; }
   </style>
 </head>
 <body>
-
-<!-- 起動スプラッシュ（一瞬表示してフェードアウト） -->
-<div id="appSplash">
-  <img src="assets/splash.webp?v=1" alt="">
-</div>
 
 <div class="header-top">
   <div class="header-top-inner"></div>
@@ -2538,19 +2521,6 @@
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('sw.js').catch(e => console.error('SW error:', e));
   }
-
-  // 起動スプラッシュを一瞬表示してフェードアウト
-  (function () {
-    const splash = document.getElementById('appSplash');
-    if (!splash) return;
-    const hide = () => {
-      splash.classList.add('hide');
-      setTimeout(() => splash.remove(), 600);
-    };
-    // 最低表示時間を確保しつつ、読み込み完了後に消す
-    if (document.readyState === 'complete') setTimeout(hide, 900);
-    else window.addEventListener('load', () => setTimeout(hide, 900));
-  })();
 </script>
 </body>
 </html>
