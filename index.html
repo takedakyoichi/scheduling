@@ -1162,6 +1162,7 @@
   let prevSettlePublished = false; // 精算公開状態の変化検知用
   let latestEventData = null;      // 認証状態変化時の再評価用
   let myEventSavedAsHost = null;   // マイイベント保存済みのロール（null=未保存）
+  let resetNewEntry = false;       // 登録直後に新規入力列の復元をスキップするフラグ
 
   // ホスト判定（アカウントuidベース。旧hostKey方式は互換のため残す）
   async function evaluateHost(data) {
@@ -1610,16 +1611,21 @@
       </div>` : '';
 
     // ── 再描画前に入力中の状態を保存 ──
+    // 登録直後は新規入力列を空にリセット（前の参加者の入力を引き継がない）
+    const skipNewEntry = resetNewEntry;
+    resetNewEntry = false;
     const savedInput = {
-      newName: wrap.querySelector('#newName')?.value || '',
-      newNote: wrap.querySelector('#newNote')?.value || '',
+      newName: skipNewEntry ? '' : (wrap.querySelector('#newName')?.value || ''),
+      newNote: skipNewEntry ? '' : (wrap.querySelector('#newNote')?.value || ''),
       newVotes: {},      // dateIdx -> key  (新規入力列)
       pendingVotes: {},  // name -> dateIdx -> key  (未登録の未回答セル)
     };
-    dates.forEach((_, i) => {
-      const sel = wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`);
-      if (sel) savedInput.newVotes[i] = sel.dataset.key;
-    });
+    if (!skipNewEntry) {
+      dates.forEach((_, i) => {
+        const sel = wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`);
+        if (sel) savedInput.newVotes[i] = sel.dataset.key;
+      });
+    }
     allEntries.forEach(([name, votes]) => {
       const hasUnAnswered = dates.some((_, di) => !votes[di]);
       if (!hasUnAnswered) return;
@@ -1767,6 +1773,8 @@
           const sel = wrap.querySelector(`.vote-btn[data-new-idx="${i}"].selected`);
           votes[i] = sel ? sel.dataset.key : '';
         });
+        // 登録成功による再描画で新規入力列を空にリセット（前の入力を引き継がない）
+        resetNewEntry = true;
         // トランザクションで重複名チェックと書き込みを原子的に行う
         try {
           await runTransaction(db, async (tx) => {
@@ -1780,6 +1788,7 @@
           });
           showToast(`✅ ${rawName} さんの回答を登録しました`);
         } catch (e) {
+          resetNewEntry = false; // 失敗時は入力を維持
           if (e.message === 'DUP') showToast('⚠️ 同じ名前が既に登録されています');
           else { showToast('⚠️ 登録に失敗しました'); console.error(e); }
         }
