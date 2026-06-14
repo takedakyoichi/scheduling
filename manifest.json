@@ -5,8 +5,8 @@
   "start_url": "/chouseikun/",
   "scope": "/chouseikun/",
   "display": "standalone",
-  "background_color": "#ffffff",
-  "theme_color": "#006934",
+  "background_color": "#f6f3ea",
+  "theme_color": "#5fa12d",
   "icons": [
     {
       "src": "icons/icon-192.png?v=2",

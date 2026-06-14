@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chouseikun-v3';
+const CACHE_NAME = 'chouseikun-v4';
 
 self.addEventListener('install', e => {
   self.skipWaiting();

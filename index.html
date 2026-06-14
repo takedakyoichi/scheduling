@@ -5,35 +5,37 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>調整くん | Scheduling Tool</title>
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#006934">
+  <meta name="theme-color" content="#5fa12d">
   <meta name="apple-mobile-web-app-capable" content="yes">
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <meta name="apple-mobile-web-app-title" content="調整くん">
   <link rel="apple-touch-icon" sizes="180x180" href="icons/apple-touch-icon.png?v=2">
   <style>
     :root {
-      --green: #006934;
-      --green-dark: #1a2e1a;
-      --green-light: #eef6f1;
-      --green-mid: #b8ddc8;
-      --gold: #c8a84b;
-      --text: #1a1a1a;
-      --text-muted: #6b7280;
-      --border: #d9e5dd;
-      --radius: 4px;
-      --shadow: 0 1px 4px rgba(0,0,0,0.08);
+      --green: #5fa12d;        /* Olive グリーン（主役） */
+      --green-dark: #2f4a1e;   /* 深いオリーブ */
+      --green-light: #f1f6e6;  /* 淡いライム地 */
+      --green-mid: #cfe2a3;    /* やわらかライム枠 */
+      --lime: #a9d45b;         /* アクセントライム */
+      --bg: #f6f3ea;           /* クリーム背景 */
+      --gold: #c9a227;
+      --text: #2b2b26;
+      --text-muted: #7c7c70;
+      --border: #e8e3d6;
+      --radius: 16px;
+      --shadow: 0 2px 14px rgba(70,80,35,0.07);
     }
     * { box-sizing: border-box; margin: 0; padding: 0; }
     body {
       font-family: 'Hiragino Sans', 'Yu Gothic UI', -apple-system, BlinkMacSystemFont, sans-serif;
-      background: #eef6f1;
+      background: var(--bg);
       min-height: 100vh;
       padding-bottom: 60px;
     }
 
     /* SMBCスタイル：上部ダークバー */
     .header-top {
-      background: #1a2e1a;
+      background: #2f4a1e;
       height: 36px;
       display: flex; align-items: center;
       padding: 0 24px;
@@ -46,7 +48,7 @@
       color: white; font-size: 0.78rem; font-weight: 600;
       letter-spacing: 0.08em; display: flex; align-items: center; gap: 6px;
     }
-    .header-top .brand-leaf { color: #7dc87d; font-size: 1rem; }
+    .header-top .brand-leaf { color: #aacf5f; font-size: 1rem; }
     .header-top .group-name { color: rgba(255,255,255,0.6); font-size: 0.72rem; }
 
     /* SMBCスタイル：ロゴエリア（白背景） */
@@ -79,13 +81,13 @@
     }
     .card-title {
       font-size: 1rem; font-weight: 700; color: var(--text);
-      margin-bottom: 20px; display: flex; align-items: center; gap: 8px;
+      margin-bottom: 20px; display: flex; align-items: center; gap: 10px;
       padding-bottom: 12px;
-      border-bottom: 3px solid var(--green);
+      border-bottom: 2px solid var(--green-mid);
     }
     .card-title .icon {
-      width: 28px; height: 28px; background: var(--green-light);
-      border-radius: 4px; display: flex; align-items: center; justify-content: center; font-size: 14px;
+      width: 30px; height: 30px; background: var(--green-light);
+      border-radius: 50%; display: flex; align-items: center; justify-content: center; font-size: 15px;
     }
     .field { margin-bottom: 18px; }
     .field label {
@@ -95,13 +97,13 @@
     }
     input[type="text"], input[type="date"], input[type="password"] {
       width: 100%; padding: 11px 14px;
-      border: 1.5px solid var(--border); border-radius: 8px;
+      border: 1.5px solid var(--border); border-radius: 12px;
       font-size: 0.95rem; outline: none; color: var(--text);
-      transition: border-color 0.2s, box-shadow 0.2s; background: #fafafa;
+      transition: border-color 0.2s, box-shadow 0.2s; background: #fbfaf5;
     }
     input[type="text"]:focus, input[type="date"]:focus, input[type="password"]:focus {
       border-color: var(--green); background: white;
-      box-shadow: 0 0 0 3px rgba(0,105,52,0.12);
+      box-shadow: 0 0 0 3px rgba(95,161,45,0.12);
     }
     .radio-group { display: flex; flex-wrap: wrap; gap: 8px; }
     .radio-chip input[type="radio"] { display: none; }
@@ -114,7 +116,7 @@
     }
     .radio-chip input[type="radio"]:checked + label {
       background: var(--green); border-color: var(--green);
-      color: white; box-shadow: 0 2px 8px rgba(0,105,52,0.25);
+      color: white; box-shadow: 0 2px 8px rgba(95,161,45,0.25);
     }
     .date-row {
       display: flex; align-items: center; gap: 8px;
@@ -135,13 +137,13 @@
     .btn-remove:hover { color: #e55; }
     .btn {
       display: inline-flex; align-items: center; justify-content: center;
-      gap: 6px; padding: 10px 20px; border-radius: 8px; border: none;
+      gap: 6px; padding: 11px 22px; border-radius: 999px; border: none;
       cursor: pointer; font-size: 0.9rem; font-weight: 600;
       transition: all 0.15s; letter-spacing: 0.02em;
     }
     .btn:active { transform: scale(0.97); }
     .btn-primary { background: var(--green); color: white; border: 1px solid var(--green); }
-    .btn-primary:hover { background: #005228; border-color: #005228; }
+    .btn-primary:hover { background: #4c8423; border-color: #4c8423; }
     .btn-primary:disabled { background: #aaa; border-color: #aaa; cursor: not-allowed; }
     .btn-secondary { background: white; color: var(--green); border: 1.5px solid var(--green); }
     .btn-secondary:hover { background: var(--green-light); }
@@ -150,7 +152,7 @@
     .btn-full { width: 100%; margin-top: 8px; }
     .btn-row { display: flex; gap: 8px; flex-wrap: wrap; margin-top: 4px; }
     .share-box {
-      background: linear-gradient(135deg, #f0fff7, #e8f5ee);
+      background: linear-gradient(135deg, #f4f8e8, #eaf3d6);
       border: 1.5px solid var(--green-mid); border-radius: 10px;
       padding: 16px; margin-top: 20px; display: none; animation: fadeUp 0.3s ease;
     }
@@ -167,13 +169,13 @@
     }
     .toast.show { transform: translateX(-50%) translateY(0); }
     /* 入力列（テーブル右端） */
-    th.input-col { background: #004d26; min-width: 72px; width: 160px; max-width: 160px; }
+    th.input-col { background: #3f5a23; min-width: 72px; width: 160px; max-width: 160px; }
     th.input-col input[type="text"] {
       width: 100%; padding: 5px 8px; border-radius: 6px;
       border: none; font-size: 0.82rem; background: rgba(255,255,255,0.92);
       color: var(--text); outline: none;
     }
-    td.input-col { background: #f5fdf8; border-left: 2px solid var(--green-mid); text-align: center; white-space: nowrap; }
+    td.input-col { background: #f3f7e8; border-left: 2px solid var(--green-mid); text-align: center; white-space: nowrap; }
     .register-btn {
       width: 100%; padding: 8px 4px; background: var(--green); color: white;
       border: none; border-radius: 6px; font-size: 0.8rem; font-weight: 600;
@@ -181,8 +183,8 @@
     }
     .register-btn:hover { background: var(--green-dark); }
     @keyframes pulse-green {
-      0%, 100% { box-shadow: 0 0 0 0 rgba(0,105,52,0.4); }
-      50% { box-shadow: 0 0 0 6px rgba(0,105,52,0); }
+      0%, 100% { box-shadow: 0 0 0 0 rgba(95,161,45,0.4); }
+      50% { box-shadow: 0 0 0 6px rgba(95,161,45,0); }
     }
     .btn-ready { animation: pulse-green 1.5s infinite; }
     .table-wrap { overflow-x: auto; border-radius: 10px; border: 1px solid var(--border); }
@@ -300,7 +302,7 @@
     /* settle banner */
     .settle-banner { border-radius:8px; padding:10px 16px; margin-bottom:12px;
       display:flex; align-items:center; gap:8px; font-weight:600; }
-    .settle-banner-ok { background:#e8f5ee; border:1.5px solid var(--green-mid); color:var(--green); }
+    .settle-banner-ok { background:#eaf3d6; border:1.5px solid var(--green-mid); color:var(--green); }
     .settle-banner-ng { background:#fff0f0; border:1.5px solid #f5c0c0; color:#c0392b; }
     /* 自動入力ボタンの状態 */
     .btn-auto-ready { background:var(--green) !important; color:white !important;
@@ -346,7 +348,7 @@
     .date-del-btn:hover { background:rgba(255,80,80,0.25); color:white; }
     /* 認証エリア */
     #signInBtn { transition: border-color 0.2s, box-shadow 0.2s; }
-    #signInBtn:hover { border-color: var(--green); box-shadow: 0 0 0 2px rgba(0,105,52,0.1); }
+    #signInBtn:hover { border-color: var(--green); box-shadow: 0 0 0 2px rgba(95,161,45,0.1); }
     /* マイイベント一覧 */
     .my-event-item {
       display:flex; align-items:center; gap:10px;
@@ -363,7 +365,7 @@
     /* 日程追加フォーム（ホスト専用） */
     #addDateWrap {
       margin-top:12px; display:flex; gap:8px; align-items:center; flex-wrap:wrap;
-      padding:12px 14px; background:#f5fdf8; border:1.5px dashed var(--green-mid);
+      padding:12px 14px; background:#f3f7e8; border:1.5px dashed var(--green-mid);
       border-radius:8px;
     }
     #addDateWrap label { font-size:0.78rem; font-weight:600; color:var(--text-muted); white-space:nowrap; }
@@ -481,7 +483,7 @@
         <button class="btn btn-primary" id="copyBtn">コピー</button>
       </div>
     </div>
-    <div style="font-size:0.78rem;color:var(--text-muted);background:#f0fff7;border:1px solid var(--green-mid);border-radius:6px;padding:10px 12px;line-height:1.6;">
+    <div style="font-size:0.78rem;color:var(--text-muted);background:#f4f8e8;border:1px solid var(--green-mid);border-radius:6px;padding:10px 12px;line-height:1.6;">
       🔑 このイベントの<strong>幹事はあなたのアカウント</strong>に紐づきました。管理はログイン後、トップページの「マイイベント」から行えます。
     </div>
   </div>
@@ -540,7 +542,7 @@
     <div class="legend-item"><span style="color:var(--gold);font-size:1rem;">△</span> おそらく参加可能（0.5pt）</div>
     <div class="legend-item"><span style="color:#c0392b;font-size:1rem;">✕</span> 参加できない（0pt）</div>
     <div class="legend-item"><span style="color:var(--gold);">★</span> 最高得点日</div>
-    <div class="legend-item host-only" style="display:none;margin-top:4px;width:100%;background:#f0fff7;border:1px solid var(--green-mid);border-radius:6px;padding:6px 10px;font-size:0.8rem;color:var(--green);">
+    <div class="legend-item host-only" style="display:none;margin-top:4px;width:100%;background:#f4f8e8;border:1px solid var(--green-mid);border-radius:6px;padding:6px 10px;font-size:0.8rem;color:var(--green);">
       日付の横の <b>📌 確定</b> ボタンを押すと開催日を確定できます
     </div>
   </div>
@@ -1583,7 +1585,7 @@
     const registerCells = allEntries.map(([name, votes]) => {
       const hasUnAnswered = dates.some((_, di) => !votes[di]);
       return hasUnAnswered
-        ? `<td style="text-align:center;padding:4px 6px;background:#f5fdf8;">
+        ? `<td style="text-align:center;padding:4px 6px;background:#f3f7e8;">
             <button class="register-btn preset-register-btn" data-name="${escHtml(name)}">登録する</button>
            </td>`
         : `<td></td>`;
