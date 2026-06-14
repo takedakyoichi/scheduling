@@ -999,7 +999,56 @@
   // リダイレクト結果を受け取る（リダイレクト方式でログインした場合）
   getRedirectResult(auth).catch(e => console.error('redirect result error:', e));
 
+  // LINE等のアプリ内ブラウザ（WebView）検出。GoogleはWebView内のOAuthをブロックするため。
+  function isInAppBrowser() {
+    const ua = navigator.userAgent || '';
+    return /Line\//i.test(ua) || /FBAN|FBAV|Instagram|Twitter|MicroMessenger|KAKAOTALK/i.test(ua);
+  }
+  function isLineBrowser() {
+    return /Line\//i.test(navigator.userAgent || '');
+  }
+
+  // 外部ブラウザで開くよう案内するオーバーレイ
+  function showExternalBrowserGuide() {
+    if (document.getElementById('extBrowserGuide')) return;
+    const ov = document.createElement('div');
+    ov.id = 'extBrowserGuide';
+    ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(0,0,0,0.55);display:flex;align-items:center;justify-content:center;padding:24px;';
+    const lineBtn = isLineBrowser()
+      ? `<button id="extOpenBtn" class="btn btn-primary" style="width:100%;margin-bottom:10px;">🌐 外部ブラウザで開く</button>`
+      : '';
+    const hint = isLineBrowser()
+      ? 'ボタンが効かない場合は、右下の「⋮」または共有アイコンから「他のアプリで開く / ブラウザで開く」を選んでください。'
+      : '画面のメニューから「ブラウザで開く（Safari / Chrome）」を選んでください。';
+    ov.innerHTML = `
+      <div style="background:#fff;border-radius:14px;padding:22px 20px;max-width:340px;width:100%;box-shadow:0 12px 40px rgba(0,0,0,0.3);">
+        <div style="font-size:1rem;font-weight:700;color:var(--text);margin-bottom:10px;">🔑 ログインは外部ブラウザで</div>
+        <div style="font-size:0.85rem;color:var(--text-muted);line-height:1.7;margin-bottom:16px;">
+          アプリ内ブラウザ（LINE等）では、セキュリティ上Googleログインができません。<br>
+          Safari / Chrome で開き直してログインしてください。
+        </div>
+        ${lineBtn}
+        <button id="extCopyBtn" class="btn btn-secondary" style="width:100%;margin-bottom:10px;">📋 URLをコピー</button>
+        <div style="font-size:0.76rem;color:var(--text-muted);line-height:1.6;margin-bottom:14px;">${hint}</div>
+        <button id="extCloseBtn" class="btn btn-ghost" style="width:100%;">閉じる</button>
+      </div>`;
+    document.body.appendChild(ov);
+    const url = location.href;
+    document.getElementById('extOpenBtn')?.addEventListener('click', () => {
+      const u = new URL(url);
+      u.searchParams.set('openExternalBrowser', '1');
+      location.href = u.toString();
+    });
+    document.getElementById('extCopyBtn')?.addEventListener('click', () => {
+      navigator.clipboard.writeText(url).then(() => showToast('📋 URLをコピーしました'));
+    });
+    document.getElementById('extCloseBtn')?.addEventListener('click', () => ov.remove());
+    ov.addEventListener('click', e => { if (e.target === ov) ov.remove(); });
+  }
+
   async function signIn() {
+    // アプリ内ブラウザではGoogleログイン不可 → 外部ブラウザ案内
+    if (isInAppBrowser()) { showExternalBrowserGuide(); return; }
     const provider = new GoogleAuthProvider();
     try {
       await signInWithPopup(auth, provider);
